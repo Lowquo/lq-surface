@@ -146,7 +146,8 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = macOS ]; then f=pluginval_macOS.zip; sum="$PLUGINVAL_SHA256_MACOS"; else f=pluginval_Windows.zip; sum="$PLUGINVAL_SHA256_WINDOWS"; fi
           curl -fsSL -o "$RUNNER_TEMP/$f" "https://github.com/Tracktion/pluginval/releases/download/$PLUGINVAL_VERSION/$f"
-          if command -v sha256sum >/dev/null; then actual=$(sha256sum "$RUNNER_TEMP/$f" | cut -d' ' -f1); else actual=$(shasum -a 256 "$RUNNER_TEMP/$f" | cut -d' ' -f1); fi
+          # Hash from stdin: GNU sha256sum prefixes its output with a backslash when the path contains one (Windows).
+          if command -v sha256sum >/dev/null; then actual=$(sha256sum < "$RUNNER_TEMP/$f" | cut -d' ' -f1); else actual=$(shasum -a 256 < "$RUNNER_TEMP/$f" | cut -d' ' -f1); fi
           if [ "$actual" != "$sum" ]; then echo "::error::pluginval checksum mismatch: $actual"; exit 1; fi
           unzip -q -o "$RUNNER_TEMP/$f" -d "$RUNNER_TEMP/pluginval"
           if [ "$RUNNER_OS" = macOS ]; then echo "PLUGINVAL=$RUNNER_TEMP/pluginval/pluginval.app/Contents/MacOS/pluginval" >> "$GITHUB_ENV"; else echo "PLUGINVAL=$RUNNER_TEMP/pluginval/pluginval.exe" >> "$GITHUB_ENV"; fi
