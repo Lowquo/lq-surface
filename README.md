@@ -141,9 +141,17 @@ JUCE is licensed separately and **is not part of this MIT-licensed repository**.
 - The minified build keeps no licence header comments (neither JUCE's nor three's `@license`).
 - **Maintainer decision (2026-11-20):** the framework packages stay MIT and JUCE stays in the optional examples, which `check:pack` enforces. Compiled example plug-ins are **not distributed** until the licensing and redistribution requirements are verified. [docs/licensing.md](docs/licensing.md) lists the licences in each artefact and the obligations their texts state; it is not legal advice. The dependency inventory is in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-## Development and contribution
+## Contributing
 
-Anyone can fork the project and submit pull requests. Read [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [SECURITY.md](SECURITY.md). Further documentation:
+lq-surface is an open-source project maintained by lowquo. We welcome bug reports, feature suggestions, documentation improvements and code contributions.
+
+Developers are encouraged to fork the repository and submit pull requests.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development instructions, contribution guidelines and the pull request process.
+
+For technical discussions and proposed features, please use [GitHub Discussions](https://github.com/Lowquo/lq-surface/discussions) when available.
+
+Please also read the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and report vulnerabilities privately as described in [SECURITY.md](SECURITY.md). Further documentation:
 
 - [docs/architecture.md](docs/architecture.md): contract, gesture and host models, native functions
 - [docs/testing.md](docs/testing.md): test layers, CI jobs, verification status and the manual DAW/host checklist
