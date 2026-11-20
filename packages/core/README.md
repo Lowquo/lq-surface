@@ -5,7 +5,7 @@ interfaces. Pure TypeScript: no DOM, renderer, JUCE, Node or DSP code, and no
 runtime dependencies. All functions are deterministic.
 
 These are **UI coordinates and UI parameter mappings**, not audio processing.
-Part of [lq-surface](../../README.md), MIT licensed.
+Part of [lq-surface](https://github.com/Lowquo/lq-surface/blob/main/README.md), MIT licensed.
 
 ```sh
 npm install @lowquo/surface

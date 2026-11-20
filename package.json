@@ -19,6 +19,8 @@
     "test:e2e": "playwright test -c examples/playground/playwright.config.ts",
     "dev": "npm run build:packages && npm run dev -w @lowquo/surface-playground",
     "check:pack": "npm run build:packages && node scripts/check-pack.mjs",
+    "release:dry-run": "npm publish --dry-run --registry=http://127.0.0.1:9/ -w @lowquo/surface -w @lowquo/surface-controls -w @lowquo/surface-juce",
+    "release:check": "npm run typecheck && npm test && npm run check:pack && npm run release:dry-run",
     "pack:juce": "npm run build && node scripts/pack-juce.mjs",
     "clean": "node scripts/clean.mjs"
   },

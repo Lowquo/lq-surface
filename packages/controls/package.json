@@ -46,7 +46,8 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "tsc -b && node ../../scripts/release-guard.mjs"
   },
   "dependencies": {
     "@lowquo/surface": "^0.1.0"

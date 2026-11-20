@@ -27,6 +27,8 @@ const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall'];
 // JUCE-licensed packages (e.g. @juce-framework/webview) and markers of copied JUCE sources.
 const JUCE_PACKAGE = /^(@juce-framework\/|juce($|[-_.]))/i;
 const JUCE_SOURCE_MARKERS = ['This file is part of the JUCE framework', 'Raw Material Software Limited'];
+// Licences accepted for runtime/peer dependencies of the published (MIT) packages.
+const PERMISSIVE = new Set(['MIT', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', '0BSD', 'Zlib']);
 // Browser packages are only required to type-check; every other package must
 // also import under plain Node ESM.
 const BROWSER_ONLY = new Set(['@lowquo/surface-controls']);
@@ -138,8 +140,8 @@ function workspacePackages() {
     .map((dir) => ({ dir, rel: toPosix(path.relative(root, dir)), manifest: readJson(path.join(dir, 'package.json')) }));
 }
 
-// Workspace links must never fall back to the registry: the @lowquo scope is not
-// yet registered on npm, so a registry copy would be someone else's package.
+// Workspace links must never fall back to the registry: inside the monorepo, @lowquo/* must always
+// be the local source, never a (possibly older) published copy from npm.
 function checkWorkspaceLinks(workspaces, packages) {
   console.log('\nWorkspace links');
   const failuresBefore = failures;
@@ -221,6 +223,12 @@ function installedManifest(name, fromDir) {
   }
 }
 
+function isPermissive(expression) {
+  if (typeof expression !== 'string') return false;
+  const alternatives = expression.replace(/[()]/g, ' ').trim().split(/\s+OR\s+/);
+  return alternatives.some((alt) => alt.split(/\s+AND\s+/).every((id) => PERMISSIVE.has(id.trim())));
+}
+
 function shipsOwnTypes(manifest) {
   if (!manifest) return false;
   if (manifest.types || manifest.typings) return true;
@@ -246,6 +254,26 @@ function checkContents(pkg) {
   for (const field of ['description', 'homepage', 'bugs', 'author']) if (!manifest[field]) fail(`missing "${field}"`);
   for (const script of INSTALL_SCRIPTS) if (manifest.scripts?.[script]) fail(`library must not declare an "${script}" script`);
   for (const problem of typesConditionOrder(manifest.exports)) fail(problem);
+  if (manifest.bundleDependencies || manifest.bundledDependencies) fail('must not bundle dependencies (their code and licences would ship inside the tarball)');
+  if (!String(manifest.scripts?.prepublishOnly ?? '').includes('release-guard.mjs')) {
+    fail('scripts.prepublishOnly must run scripts/release-guard.mjs (publishing needs explicit maintainer approval)');
+  }
+
+  // Runtime and peer dependencies (other than our own packages) must be permissively licensed.
+  for (const name of Object.keys({ ...manifest.dependencies, ...manifest.peerDependencies, ...manifest.optionalDependencies })) {
+    if (packages.some((p) => p.manifest.name === name)) continue;
+    const dep = installedManifest(name, pkg.dir);
+    if (!dep) fail(`cannot read the licence of dependency "${name}" (is it installed?)`);
+    else if (!isPermissive(dep.license)) fail(`dependency "${name}" has licence ${JSON.stringify(dep.license)}, not in the permissive allow-list`);
+  }
+
+  // npmjs.com renders README.md without the repository around it, so links must be absolute.
+  const readme = path.join(pkg.dir, 'README.md');
+  if (existsSync(readme)) {
+    for (const [, target] of readFileSync(readme, 'utf8').matchAll(/\]\(([^)\s]+)\)/g)) {
+      if (!/^(https?:|mailto:|#)/.test(target)) fail(`README.md links to "${target}", which breaks on npmjs.com; use an absolute https:// URL`);
+    }
+  }
 
   // Packaged LICENSE must match the repository licence.
   const licence = path.join(pkg.dir, 'LICENSE');
@@ -450,6 +478,20 @@ if (missingBuild.length) {
 
 console.log(`Checking ${packages.length} publishable packages with npm ${run('npm', ['--version'], { cwd: root }).stdout.trim()} / Node ${process.version}`);
 for (const pkg of packages) checkContents(pkg);
+{
+  console.log('\nRelease version');
+  const failuresBefore = failures;
+  const versions = [...new Set(packages.map((p) => p.manifest.version))];
+  if (versions.length !== 1) fail(`publishable packages must share one release version; found ${versions.join(', ')}`);
+  for (const pkg of packages) {
+    for (const [name, range] of Object.entries({ ...pkg.manifest.dependencies, ...pkg.manifest.peerDependencies })) {
+      if (packages.some((p) => p.manifest.name === name) && range !== `^${versions[0]}`) {
+        fail(`${pkg.manifest.name} depends on ${name}@${range}; expected ^${versions[0]} for a lockstep release`);
+      }
+    }
+  }
+  if (failures === failuresBefore) ok(`${packages.map((p) => p.manifest.name).join(', ')} all at ${versions[0]} (lockstep)`);
+}
 checkWorkspaceLinks(workspaces, packages);
 if (!contentsOnly && failures === 0) smokeTest(packages);
 else if (!contentsOnly) console.log('\nSkipping tarball smoke test because content checks failed.');

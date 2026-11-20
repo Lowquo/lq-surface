@@ -5,7 +5,7 @@ injected JUCE native functions and turns validated host state back into poses. I
 `@lowquo/surface`; it never imports the JUCE frontend library or touches `window` itself — pass
 `getNativeFunction` and `window.__JUCE__.backend` in. No audio code is part of this package.
 
-The native counterpart is the [JUCE example](../../examples/juce-plugin/README.md), which registers
+The native counterpart is the [JUCE example](https://github.com/Lowquo/lq-surface/blob/main/examples/juce-plugin/README.md), which registers
 `surfaceBeginGesture(id)`, `surfaceSetParameter(id, value)`, `surfaceEndGesture(id)` and
 `surfaceGetState()`, and emits `surfaceHostState` events with `{ x, y, z }` normalised values.
 

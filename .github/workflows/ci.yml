@@ -43,6 +43,10 @@ jobs:
       # consumer project, and imports/type-checks them (nodenext + bundler).
       - name: Validate packages (npm pack + tarball smoke test)
         run: npm run check:pack
+      # `npm publish --dry-run` against an unreachable registry: runs each package's prepublishOnly
+      # (tsc -b + release guard, which allows dry runs) and shows what npm would receive. Never publishes.
+      - name: Publish dry run (no registry)
+        run: npm run release:dry-run
       # The build must not modify tracked files (e.g. a stale lockfile rewrite).
       - name: Verify clean working tree
         shell: bash
