@@ -16,14 +16,17 @@
     "build": "npm run build:packages && npm run build -w @lowquo/surface-playground",
     "typecheck": "npm run build:packages && npm run typecheck -w @lowquo/surface-playground",
     "test": "npm run build:packages && npm run test --workspaces --if-present",
+    "test:e2e": "playwright test -c examples/playground/playwright.config.ts",
     "dev": "npm run build:packages && npm run dev -w @lowquo/surface-playground",
-    "pack:juce": "npm run build && python3 scripts/pack_juce.py",
+    "check:pack": "npm run build:packages && node scripts/check-pack.mjs",
+    "pack:juce": "npm run build && node scripts/pack-juce.mjs",
     "clean": "node scripts/clean.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/three": "^0.187.0",
     "typescript": "^5.9.3",
-    "vite": "^7.1.12",
-    "@types/three": "^0.187.0"
+    "vite": "^7.1.12"
   },
   "license": "MIT"
 }

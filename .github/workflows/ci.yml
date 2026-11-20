@@ -39,6 +39,10 @@ jobs:
         run: npm run build
       - name: Test
         run: npm test
+      # Checks npm pack contents, installs the packed tarballs into a temp
+      # consumer project, and imports/type-checks them (nodenext + bundler).
+      - name: Validate packages (npm pack + tarball smoke test)
+        run: npm run check:pack
       # The build must not modify tracked files (e.g. a stale lockfile rewrite).
       - name: Verify clean working tree
         shell: bash

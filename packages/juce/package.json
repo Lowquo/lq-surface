@@ -4,15 +4,42 @@
   "description": "Safe JUCE native-function adapter contracts for lq-surface",
   "type": "module",
   "license": "MIT",
+  "author": "lowquo",
+  "keywords": [
+    "audio",
+    "audio-plugin",
+    "juce",
+    "webview",
+    "webbrowsercomponent",
+    "vst3",
+    "audio-unit",
+    "parameters",
+    "automation"
+  ],
+  "homepage": "https://github.com/Lowquo/lq-surface/tree/main/packages/juce#readme",
+  "bugs": {
+    "url": "https://github.com/Lowquo/lq-surface/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lowquo/lq-surface.git",
+    "directory": "packages/juce"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
   "files": [
     "dist",
     "!dist/.tsbuildinfo",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "types": "./dist/index.d.ts",

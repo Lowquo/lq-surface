@@ -8,3 +8,10 @@ coverage/
 .idea/
 build/
 examples/juce-plugin/resources/surface-ui.zip
+# Native (JUCE example) build trees and fetched SDKs
+cmake-build-*/
+/_deps/
+# Playwright output
+test-results/
+playwright-report/
+blob-report/

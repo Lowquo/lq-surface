@@ -7,5 +7,10 @@ const paths = [
   'packages/juce/dist',
   'examples/playground/dist',
   'examples/juce-plugin/resources/surface-ui.zip',
+  'test-results',
+  'playwright-report',
+  'blob-report',
+  'examples/playground/test-results',
+  'examples/playground/playwright-report',
 ];
 for (const path of paths) rmSync(path, { recursive: true, force: true });
