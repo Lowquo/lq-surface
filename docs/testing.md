@@ -14,7 +14,7 @@ Status labels used on this page:
 | Area | Status |
 | --- | --- |
 | Phase 1 CI (`npm ci`, typecheck, build, unit tests) on ubuntu/macOS/windows | **Verified on GitHub Actions** (run 44737857469, PR #5, commit `b713702`). |
-| Integrated tree: typecheck, build, 103 unit tests, `check:pack`, 33 browser tests | **Verified locally and on GitHub Actions** on ubuntu/macOS/windows (runs 44738961814 (`CI`), 44738961923 (`Browser tests`) and 44738961969 (`JUCE example`), commit `5b18ee8`). |
+| Integrated tree: typecheck, build, 104 unit tests (Node 22 and 24), `check:pack`, 33 browser tests | **Verified locally and on GitHub Actions** on ubuntu/macOS/windows (runs 44738961814 (`CI`), 44738961923 (`Browser tests`) and 44738961969 (`JUCE example`), commit `5b18ee8`). |
 | Native example on macOS arm64: AU + VST3 build, headless suite, WKWebView smoke test | **Verified locally and on GitHub Actions** (`macos-latest`, Xcode 26.6; the smoke step passed). |
 | Native example on Windows (VST3 + WebView2) | **Build and headless suite verified on GitHub Actions** (`windows-latest`, MSVC 14.52). The editor/WebView2 runtime has **not** been run on Windows (no GUI test there). |
 | `auval -strict` (AU) | **Passed** locally (macOS 15.7.7) and on GitHub Actions (`macos-latest`). |
@@ -30,7 +30,7 @@ Status labels used on this page:
 | Layer | What it covers | Where | Command | CI job | Status |
 | --- | --- | --- | --- | --- | --- |
 | Static checks | Package and playground types (including the e2e tests), and the playground build | all workspaces | `npm run typecheck`, `npm run build` | `Typecheck, build and test (<os>)` | Verified locally |
-| Core unit (41) | Pose contract (seeded randomised property tests: exact disk, idempotence, round trips), parameter validation, regions and blending, pinned 0.1.0 region fixtures | `packages/core/test` | `npm test` | `Typecheck, build and test (<os>)` | Verified locally |
+| Core unit (42) | Pose contract (seeded randomised property tests: exact disk, idempotence, round trips), parameter validation, regions and blending, 0.1.0 region compatibility (exact against a verbatim 0.1.0 oracle on the same runtime; within 4 ulps of the Node 22 fixtures on any runtime) | `packages/core/test` | `npm test` | `Typecheck, build and test (<os>[, Node 24])` | Verified locally |
 | Controls unit (21) | Layout and projection geometry, drag/key/wheel maths and step sizes, fine ratio, `GestureTracker` coalescing and balance (randomised sequences) | `packages/controls/test` | `npm test` | `Typecheck, build and test (<os>)` | Verified locally |
 | JUCE adapter unit (41) | Call ordering, coalescing and bounded queues, timeouts, `NativeCallError`, controller balance and per-axis dedupe, hostile host-state payloads, the session's echo suppression and stale-state resync | `packages/juce/test` | `npm test` | `Typecheck, build and test (<os>)` | Verified locally |
 | Package contents | Tarball contents and manifests, workspace links, consumer install from local tarballs, Node ESM import, TypeScript `bundler` + `nodenext` | `scripts/check-pack.mjs` | `npm run check:pack` | `Typecheck, build and test (<os>)` | Verified locally |
@@ -168,7 +168,7 @@ All three workflows run on pushes to `main`, on pull requests to `main`, and on 
 
 | Workflow | Job (required-check name) | What it runs | Status |
 | --- | --- | --- | --- |
-| `CI` (`ci.yml`) | `Typecheck, build and test (ubuntu-latest)`, `(macos-latest)`, `(windows-latest)` | `npm ci`, typecheck, build, unit tests, `check:pack`, then fails if any tracked file changed | Verified on GitHub (all three OSes, including `check:pack`). |
+| `CI` (`ci.yml`) | `Typecheck, build and test (ubuntu-latest)`, `(macos-latest)`, `(windows-latest)`, each also on Node 24 (`…, Node 24)`) | `npm ci`, typecheck, build, unit tests, `check:pack`, then fails if any tracked file changed | Verified on GitHub (all three OSes, including `check:pack`). |
 | `Browser tests` (`browser.yml`) | `Playwright (Chromium) on ubuntu-latest`, `… on macos-latest`, `… on windows-latest` | `npm ci`, build, install Chromium (`--with-deps`), `npm run test:e2e`. Uploads the report on failure. | Verified on GitHub on each OS. |
 | `JUCE example` (`juce.yml`) | `macOS (AU + VST3)`, `Windows (VST3 + WebView2)` | `npm ci`, `pack:juce`, JUCE 9.0.4 at a pinned commit, the WebView2 SDK from NuGet (Windows), build, headless ctest, bundle inspection. On macOS it also runs the WebView smoke test as `continue-on-error`. | Verified on GitHub: both jobs passed, including the macOS smoke step. |
 

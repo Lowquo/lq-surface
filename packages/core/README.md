@@ -209,7 +209,10 @@ finite and `> 0`.
 - Weights vary continuously with the pose angle. Extreme sharpness or
   degenerate layouts (for example a pose exactly opposite a single region) still
   produce normalized weights.
-- With the default regions and sharpness, results are bit-identical to 0.1.0.
+- With the default regions and sharpness, the computation is the 0.1.0 formula: results are
+  bit-identical to 0.1.0 **on the same JavaScript engine**. `Math.pow`, `Math.sin`, `Math.cos` and
+  `Math.hypot` are implementation-approximated, so across engines or engine versions the last bit
+  can differ (measured: at most 2 ulps between Node 22 and Node 24/25).
 - Throws `RangeError` for an invalid sharpness or non-finite angle, and
   `TypeError` if `regions` is not an array.
 
