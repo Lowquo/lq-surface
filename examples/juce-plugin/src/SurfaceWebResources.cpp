@@ -76,7 +76,7 @@ juce::String mimeTypeForPath (const juce::String& path)
 EmbeddedUiArchive::EmbeddedUiArchive (const void* data, size_t sizeInBytes)
 {
     if (data != nullptr && sizeInBytes > 0)
-        zip = std::make_unique<juce::ZipFile> (new juce::MemoryInputStream (data, sizeInBytes, false), true);
+        zip = std::make_unique<juce::ZipFile> (std::make_unique<juce::MemoryInputStream> (data, sizeInBytes, false));
 }
 
 EmbeddedUiArchive::~EmbeddedUiArchive() = default;

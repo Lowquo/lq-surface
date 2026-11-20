@@ -790,14 +790,14 @@ public:
 
             for (int i = 0; i < zip.getNumEntries(); ++i)
             {
-                const auto& name = zip.getEntry (i)->filename;
-                const auto resource = archive.getResource ("/" + name);
-                expect (resource.has_value(), name);
+                const auto& entryName = zip.getEntry (i)->filename;
+                const auto resource = archive.getResource ("/" + entryName);
+                expect (resource.has_value(), entryName);
 
                 if (resource.has_value())
                 {
                     expectEquals ((juce::int64) resource->data.size(), zip.getEntry (i)->uncompressedSize);
-                    expect (resource->mimeType != "application/octet-stream", name);
+                    expect (resource->mimeType != "application/octet-stream", entryName);
                 }
             }
         }
