@@ -4,13 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before 1.0.0, minor releases may contain breaking changes, and those are called out explicitly.
 
-Nothing has been published to npm yet, and no version has been tagged.
+Nothing has been published to npm yet, and no version has been tagged. The `lowquo` npm organisation exists (created 2026-11-20), and the package names `@lowquo/surface`, `@lowquo/surface-controls` and `@lowquo/surface-juce` are reserved for the first release.
 
 ## [Unreleased]
 
-Hardening of the 0.1.0 starter. All `package.json` files still say `0.1.0`. Whether this ships as 0.1.0 or 0.1.1 is a maintainer decision.
+Hardening of the starter, prepared as the first npm release. All `package.json` files say `0.1.0`, the recommended first version (nothing with that version was ever published or tagged). The maintainer confirms the version when approving the release.
 
-The changes below are **breaking relative to the untagged 0.1.0 starter** (commit `3df553c`). It was never published, so no registry consumers exist.
+The changes below are **breaking relative to the untagged starter** (commit `3df553c`). It was never published, so no registry consumers exist.
 
 ### Added
 
@@ -66,6 +66,12 @@ The changes below are **breaking relative to the untagged 0.1.0 starter** (commi
 - `check:pack` also fails if a published package depends on a JUCE package or ships JUCE source, which keeps JUCE inside the examples.
 - Validators in the `JUCE example` workflow: pluginval v1.0.4 (pinned SHA-256) at strictness 10 on the VST3 (macOS, Windows) and the AU (macOS), plus `auval -strict`. The workflow also fails if the built plug-in identity ever changes.
 - `examples/juce-plugin/scripts/macos-test-install.sh`: user-level install/uninstall for validation and DAW tests. It never overwrites, and only removes bundles carrying the example's bundle ID.
+- **npm release preparation** (nothing is published):
+  - Each package's `prepublishOnly` runs `tsc -b` and `scripts/release-guard.mjs`. The guard refuses a real `npm publish` unless `LQ_SURFACE_RELEASE_APPROVED` equals the package version and the publish runs from a clean checkout tagged `v<version>`. Dry runs are always allowed.
+  - `npm run release:dry-run` (a publish dry run against an unreachable registry) and `npm run release:check` (typecheck, unit tests, `check:pack`, dry run).
+  - `check:pack` additionally requires: package README links absolute (npmjs.com can't resolve repository-relative links), no bundled dependencies, permissively licensed runtime and peer dependencies, lockstep versions, internal ranges of `^<version>`, and the release guard in `prepublishOnly`.
+  - Package README links now point to absolute GitHub URLs.
+  - `docs/releasing.md` gives the full manual publish procedure; draft release notes are in `docs/release-notes/v0.1.0.md`.
 - `docs/architecture.md`, `docs/releasing.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `GOVERNANCE.md`, and the issue and PR templates were rewritten.
 
 ### Changed
@@ -157,7 +163,7 @@ The changes below are **breaking relative to the untagged 0.1.0 starter** (commi
 - **Gesture teardown** on navigation, reload and editor destruction. This is covered by the headless native tests and the WebView smoke test.
 - **Resource paths.** `..`, backslashes, colons, empty segments and control characters are refused.
 - `JUCE_USE_CURL=0`: no network access at plug-in runtime.
-- `check:pack` never resolves `@lowquo/*` from a registry; the scope is unregistered, so a registry copy would be someone else's package.
+- `check:pack` never resolves `@lowquo/*` from a registry. Inside the repository the packages always come from the local workspace, never from a published copy.
 - The `JUCE example` workflow checks out with `persist-credentials: false`. All workflows are read-only and use no secrets.
 
 ### Known limitations / not verified
@@ -171,7 +177,7 @@ The changes below are **breaking relative to the untagged 0.1.0 starter** (commi
 - `vite build` warns that the main playground chunk is over 500 kB (about 573 kB).
 - npm scope, licensing and plug-in identity were decided on 2026-11-20 ([docs/releasing.md](docs/releasing.md#open-maintainer-decisions)). Still open: licence notices in bundles and the pre-distribution checklist (docs/licensing.md), the Vite 8 build target, Playwright version age, the AU `network.client` entitlement, editor keyboard focus, initial-commit attribution and the version number.
 
-## [0.1.0] - 2026-11-20 (untagged source import)
+## Initial source import (2026-11-20, untagged, never published)
 
 Initial source starter, committed as `3df553c` ("first commit"). It was not tagged and not published to npm.
 

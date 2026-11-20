@@ -136,7 +136,7 @@ In `.github/FUNDING.yml`, uncomment entries only for **real, verified** sponsor 
 
 ### npm
 
-Publishing needs explicit maintainer approval. **The `@lowquo` scope is not registered on npm.** Before any publication, create the `lowquo` npm organisation with 2FA enforced, then follow [releasing.md](releasing.md).
+Publishing needs explicit maintainer approval. The maintainer owns the `lowquo` npm organisation (created 2026-11-20); enforce 2FA for its members. The package names stay `@lowquo/surface`, `@lowquo/surface-controls` and `@lowquo/surface-juce`. A real `npm publish` is blocked by `scripts/release-guard.mjs` unless the version is explicitly approved. Follow [releasing.md](releasing.md#7-npm-publication-only-with-explicit-approval).
 
 ## Dependabot
 

@@ -9,7 +9,7 @@
 
 lq-surface provides precise three-axis controls for audio software, kept separate from the DSP. It is an independent lowquo project. **This repository does not contain the lq-hit sound engine or any proprietary DSP.**
 
-> **Status: 0.1.0, pre-release.** Nothing has been published to npm. The `@lowquo` npm scope is not registered yet, so don't install `@lowquo/*` packages from a registry. The browser playground and the JUCE example are for evaluation. They are not production-validated plug-ins. No DAW has been tested yet. Windows is verified only as a CI build plus headless tests, not with a running editor. [docs/testing.md](docs/testing.md#status) lists what has and hasn't been verified.
+> **Status: 0.1.0, pre-release.** Nothing has been published to npm yet. The `lowquo` npm organisation exists and the packages are prepared for a first release, which needs the maintainer's explicit approval ([docs/releasing.md](docs/releasing.md#7-npm-publication-only-with-explicit-approval)). Until then, build from source. The browser playground and the JUCE example are for evaluation. They are not production-validated plug-ins. No DAW has been tested yet. Windows is verified only as a CI build plus headless tests, not with a running editor. [docs/testing.md](docs/testing.md#status) lists what has and hasn't been verified.
 
 ## What is included?
 

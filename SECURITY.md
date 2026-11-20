@@ -52,7 +52,8 @@ Status labels:
 | Instance isolation | Each editor owns its UI archive. Instances share no state. | **Verified locally** (headless isolation tests). |
 | CI secrets isolation | All workflows run on `pull_request` (not `pull_request_target`) with `permissions: contents: read`, and reference no secrets. The `JUCE example` workflow checks out with `persist-credentials: false`. | Implemented and verified on GitHub (all three workflows passed). |
 | Dependency integrity | `npm ci` from the committed lockfile, `npm audit` on install (`.npmrc`), and a Dependabot cooldown before new releases. Dependabot PRs are never auto-merged. `check:pack` never resolves `@lowquo/*` from a registry. | Lockfile and `check:pack`: verified. Dependabot review is a process. |
-| npm scope | The `@lowquo` scope is **not registered** on npm, so anyone could currently claim it. | **Open.** The maintainer creates the organisation with 2FA before any publish. |
+| npm scope | The maintainer owns the `lowquo` npm organisation (created 2026-11-20). | **Done.** Enforce 2FA for all org members before the first publish. |
+| Accidental publishing | Each package's `prepublishOnly` runs `scripts/release-guard.mjs`. It refuses a real `npm publish` unless `LQ_SURFACE_RELEASE_APPROVED` equals the version and the publish runs from a clean checkout tagged `v<version>`. `npm run release:dry-run` targets an unreachable registry. | **Verified locally:** a real publish without approval was refused before any upload, and so were a wrong-version approval and a dirty tree. |
 | Publishing | Nothing is published from CI or on untrusted input. Publishing is manual and needs explicit maintainer approval. See [docs/releasing.md](docs/releasing.md). | Process. No publish workflow exists. |
 
 ### Out of scope

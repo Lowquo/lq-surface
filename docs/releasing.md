@@ -32,6 +32,7 @@ npm run typecheck
 npm run build
 npm test
 npm run check:pack
+npm run release:dry-run   # what npm would receive; never publishes
 npx playwright install chromium
 npm run test:e2e
 git status --porcelain   # must print nothing
@@ -91,16 +92,73 @@ ctest --test-dir <dir>
   ```
 
 - [ ] Confirm the tag points at the intended commit, and that commit's attribution: `gh api repos/Lowquo/lq-surface/commits/vX.Y.Z --jq .author.login`.
-- [ ] Create the GitHub release from the tag, and paste in that version's changelog section.
+- [ ] Create the GitHub release from the tag, using `docs/release-notes/vX.Y.Z.md` (draft for 0.1.0: [release-notes/v0.1.0.md](release-notes/v0.1.0.md)). **Attach no binaries:** compiled example plug-ins and the UI ZIP are not distributed until the [licensing checklist](licensing.md#before-any-binary-distribution-open-maintainer) is complete.
 
 ## 7. npm publication (only with explicit approval)
 
-Skip this section unless the maintainer has approved publishing this version.
+Skip this section unless the maintainer has explicitly approved publishing **this exact version**.
 
-- [ ] **The `@lowquo` scope is not registered on npm.** The maintainer must first create the npm organisation `lowquo`, with 2FA enforced. Until then, anyone could claim the name. `check:pack` deliberately never resolves `@lowquo/*` from a registry.
-- [ ] Prefer a manual `workflow_dispatch` publish workflow behind a protected environment, with npm provenance. None exists yet; adding one is a separate, reviewed change. Local publishing can't produce provenance.
-- [ ] Publish in dependency order. First `@lowquo/surface`, then `@lowquo/surface-controls` and `@lowquo/surface-juce`. Each package already sets `publishConfig.access: public`.
-- [ ] Afterwards, install the published versions into a scratch project and import each package.
+### Preconditions
+
+- [ ] The npm organisation `lowquo` exists. The maintainer created it on 2026-11-20 and controls publishing.
+  Require two-factor authentication for all org members, and use 2FA for *authorization and writes* on the
+  publishing account.
+- [ ] For a first release, `npm view @lowquo/surface` returns 404 (the name is unclaimed). For later releases
+  it shows the previous version.
+- [ ] The tag `vX.Y.Z` exists on the merged commit (section 6), and every CI gate (section 3) is green on it.
+
+### Publish (manual, from the tag)
+
+The first release has to be published manually: npm configures trusted publishing per package, so the
+packages must exist first.
+
+```sh
+git clone https://github.com/Lowquo/lq-surface.git lq-surface-release && cd lq-surface-release
+git checkout vX.Y.Z
+npm ci
+npm run release:check              # typecheck, unit tests, check:pack, publish dry run
+npm login                          # the maintainer's npm account, with 2FA
+export LQ_SURFACE_RELEASE_APPROVED=X.Y.Z
+npm publish -w @lowquo/surface               # asks for the one-time password
+npm publish -w @lowquo/surface-controls
+npm publish -w @lowquo/surface-juce
+unset LQ_SURFACE_RELEASE_APPROVED
+```
+
+- **Approval guard.** Each package's `prepublishOnly` runs `tsc -b` and then `scripts/release-guard.mjs`. The
+  guard refuses a real publish unless `LQ_SURFACE_RELEASE_APPROVED` equals the package version, the git
+  working tree is clean, and `HEAD` is tagged `vX.Y.Z`. `npm publish --dry-run` is always allowed.
+  `check:pack` fails if a package's `prepublishOnly` stops running the guard.
+- **Order.** Publish one package at a time, `@lowquo/surface` first: the other two depend on
+  `@lowquo/surface@^X.Y.Z`.
+- Each package sets `publishConfig.access: public`. Scoped packages default to restricted.
+- `npm run release:dry-run` points at an unreachable registry (`http://127.0.0.1:9/`), so even a dry run
+  with a missing `--dry-run` flag couldn't publish. It prints each tarball's file list, size and `integrity`.
+- On Windows, set the approval with `$env:LQ_SURFACE_RELEASE_APPROVED = 'X.Y.Z'` (PowerShell) or
+  `set LQ_SURFACE_RELEASE_APPROVED=X.Y.Z` (cmd).
+
+### Verify from the registry
+
+```sh
+npm view @lowquo/surface@X.Y.Z version dist.integrity
+npm view @lowquo/surface-controls@X.Y.Z version dist.integrity peerDependencies
+npm view @lowquo/surface-juce@X.Y.Z version dist.integrity dependencies
+mkdir lq-consumer && cd lq-consumer && npm init -y > /dev/null
+npm install @lowquo/surface@X.Y.Z @lowquo/surface-controls@X.Y.Z @lowquo/surface-juce@X.Y.Z three
+node --input-type=module -e "for (const p of ['@lowquo/surface', '@lowquo/surface-juce']) console.log(p, Object.keys(await import(p)).length, 'exports')"
+```
+
+- [ ] Each published `dist.integrity` matches the `integrity` that `npm run release:dry-run` printed from the
+  same tag with the same npm version.
+- [ ] If a published version is wrong, don't try to reuse its number. npm never allows a version to be
+  republished. Prefer `npm deprecate @lowquo/<pkg>@X.Y.Z "<reason>"` and a patch release. Under npm's policy,
+  unpublishing is possible only within 72 hours, and only if nothing depends on the package.
+
+### After the first release
+
+- [ ] Configure npm **trusted publishing** (OIDC) for each package. Then add a reviewed `workflow_dispatch` publish
+  workflow behind a protected GitHub environment that requires the maintainer's approval, and that publishes
+  with provenance. Check npm's current documentation when doing this. Until then, publish manually as above.
 - [ ] Add a fresh `## [Unreleased]` section to the changelog.
 
 ## Afterwards
@@ -123,4 +181,4 @@ These came up during the 0.1 hardening work. They are recorded neutrally, and no
 | 7 | AU `network.client` | JUCE's default AU `Info.plist` declares the `network.client` resource usage, even though the example makes no network requests. | Open |
 | 8 | Editor keyboard focus | The example doesn't set `EDITOR_WANTS_KEYBOARD_FOCUS` (JUCE default `FALSE`), which may stop arrow keys etc. reaching the trackball in some DAWs. This is untested. | Open |
 | 9 | Initial commit attribution | `3df553c` uses an unlinkable hostname email. Leave it, or rewrite it ([maintaining.md](maintaining.md#the-existing-initial-commit)). | Open |
-| 10 | First version number | Ship the integrated work as 0.1.0 (never tagged or published) or as 0.1.1. | Open |
+| 10 | First version number | Nothing has ever been published or tagged, and the packages are at 0.1.0. Recommendation: publish the integrated work as **0.1.0**. The untagged starter is recorded in the changelog as a pre-release import, not as a version. | Open: confirm with the release approval |

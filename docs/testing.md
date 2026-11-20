@@ -78,7 +78,18 @@ npm run test:e2e -- --repeat-each=5  # flakiness check
 ```sh
 npm run check:pack                   # full: tarballs + consumer install + import/type-check
 npm run check:pack -- --contents-only  # tarball contents only, no install, no network
+npm run release:dry-run              # `npm publish --dry-run` against an unreachable registry
+npm run release:check                # typecheck + unit tests + check:pack + release:dry-run
 ```
+
+Besides tarball contents, `check:pack` enforces these publication rules:
+
+- Package README links are absolute, because npmjs.com can't resolve repository-relative links.
+- No package bundles dependencies.
+- Runtime and peer dependencies have permissive licences (MIT, ISC, BSD-2/3-Clause, Apache-2.0, 0BSD, Zlib).
+- No package depends on JUCE or ships JUCE source.
+- All packages share one version, and internal ranges are `^<version>`.
+- Every package runs the release guard in `prepublishOnly`.
 
 The full check resolves `@lowquo/*` only from the local tarballs. `three`, `@types/three` and `typescript` come from your configured registry or the npm cache.
 
