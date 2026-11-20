@@ -51,7 +51,7 @@ Playwright downloads its own browser builds (Chromium) at `npx playwright instal
 
 ## Open questions for the maintainer
 
-These are **maintainer decisions** (also listed in [docs/releasing.md](docs/releasing.md#open-maintainer-decisions)). These docs make no recommendation on licensing outcomes.
+Decided on 2026-11-20: the MIT packages contain no JUCE code, JUCE stays in the examples, and compiled example plug-ins are not distributed until the requirements are verified. The per-artefact licence breakdown, the JUCE `JUCE.spdx.json` components linked into the plug-in, the WebView2 SDK licence, and the pre-distribution checklist are in [docs/licensing.md](docs/licensing.md). These remain open (also in [docs/releasing.md](docs/releasing.md#open-maintainer-decisions)); these docs make no recommendation on licensing outcomes.
 
 1. Whether, and in what form, to distribute the built playground: for example a hosted demo, release assets, or `surface-ui.zip`. Also whether to distribute JUCE example binaries, given the `@juce-framework/webview` licence options and JUCE's own licence.
 2. Whether build outputs should carry the licence notices of the bundled code, for example by keeping legal comments or generating a notices file during the build.

@@ -139,7 +139,7 @@ JUCE is licensed separately and **is not part of this MIT-licensed repository**.
   - The `surface-ui.zip` packed from that build, and therefore the JUCE plug-in binary, contain it too.
 - The **JUCE plug-in example** compiles against the JUCE framework, which is under JUCE's own licence.
 - The minified build keeps no licence header comments (neither JUCE's nor three's `@license`).
-- How the playground build, the ZIP and plug-in binaries are distributed, and what that requires, is a **maintainer decision**. This README makes no legal determination. Details are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **Maintainer decision (2026-11-20):** the framework packages stay MIT and JUCE stays in the optional examples, which `check:pack` enforces. Compiled example plug-ins are **not distributed** until the licensing and redistribution requirements are verified. [docs/licensing.md](docs/licensing.md) lists the licences in each artefact and the obligations their texts state; it is not legal advice. The dependency inventory is in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Development and contribution
 

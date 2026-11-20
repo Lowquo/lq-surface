@@ -62,6 +62,10 @@ The changes below are **breaking relative to the untagged 0.1.0 starter** (commi
 **Documentation**
 
 - `docs/testing.md`, `docs/accessibility.md`, `docs/maintaining.md` (replaces `docs/first-push.md`), `THIRD_PARTY_NOTICES.md` and this changelog.
+- `docs/licensing.md`: what each artefact contains, the licences involved (from JUCE 9.0.4's `LICENSE.md` and `JUCE.spdx.json`, and the WebView2 SDK's `LICENSE.txt`), the obligations those texts state, and the maintainer's licensing decisions.
+- `check:pack` also fails if a published package depends on a JUCE package or ships JUCE source, which keeps JUCE inside the examples.
+- Validators in the `JUCE example` workflow: pluginval v1.0.4 (pinned SHA-256) at strictness 10 on the VST3 (macOS, Windows) and the AU (macOS), plus `auval -strict`. The workflow also fails if the built plug-in identity ever changes.
+- `examples/juce-plugin/scripts/macos-test-install.sh`: user-level install/uninstall for validation and DAW tests. It never overwrites, and only removes bundles carrying the example's bundle ID.
 - `docs/architecture.md`, `docs/releasing.md`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `GOVERNANCE.md`, and the issue and PR templates were rewritten.
 
 ### Changed
@@ -99,7 +103,7 @@ The changes below are **breaking relative to the untagged 0.1.0 starter** (commi
 
 **JUCE example, breaking for anyone who loaded an earlier build in a host**
 
-- `PLUGIN_CODE` changed from `LqSf` to `Lqsf` (the AU requirement of exactly one upper-case letter). This changes the AU subtype and the VST3 class IDs, so hosts see a different plug-in.
+- **Plug-in identity, now frozen (maintainer decision):** manufacturer `Lqoo` (was the placeholder `LqXX`), plug-in `Lqsf` (was `LqSf`; the AU and GarageBand rule is exactly one upper-case letter), bundle ID `io.lowquo.surface.example`. This changes the AU type/subtype/manufacturer triple and the VST3 class IDs, so hosts see a different plug-in from any earlier build. The values are distinct from every commercial lowquo plug-in.
 - The parameter display names are now "Surface X/Y/Z" (they were the IDs). The IDs `surface_x`, `surface_y` and `surface_z` are unchanged.
 - Gestures are tracked per parameter:
   - a set without a begin is applied as a self-contained gesture;
@@ -143,6 +147,7 @@ The changes below are **breaking relative to the untagged 0.1.0 starter** (commi
 - The playground type-checks under TypeScript 7: `vite-env.d.ts` declares the CSS side-effect import.
 - Native warnings reported only by GitHub's hosted compilers (Xcode 26.6, MSVC 14.52): the deprecated `juce::ZipFile(InputStream*, bool)` constructor is replaced by the `std::unique_ptr` overload, and a shadowed variable in the native tests (MSVC C4458) is renamed.
 - The trackball's default screen-reader instructions now mention every binding: Alt+Up/Down and the wheel for twist, and Shift, Control or Command for fine steps.
+- Browser tests no longer assume that real key and wheel events arrive within the 400 ms gesture idle window. A loaded macOS runner spaced them further apart, which correctly produced two gestures, and the test failed. Balance is now checked once the native call log is quiet. A new test keeps the strict one-gesture check by dispatching the burst synchronously. Both were verified with events deliberately spaced 450 ms apart.
 - Package READMEs: the controls quick start used a non-existent `onState` method, and its guard could drop a host update that arrived mid-gesture. The JUCE adapter sample didn't type-check. Both now compile against the published types.
 
 ### Security
@@ -157,14 +162,14 @@ The changes below are **breaking relative to the untagged 0.1.0 starter** (commi
 
 ### Known limitations / not verified
 
-- **Windows:** the VST3 builds and the headless native suite passes on GitHub's `windows-latest`. The editor and WebView2 runtime have not been run on Windows.
-- **No DAW testing.** No `auval` or `pluginval` run (both need maintainer approval), no code signing or notarisation, and no universal (x86_64) macOS build. The macOS bundles were built and inspected, not installed.
+- **Windows:** the VST3 builds, and the headless native suite and pluginval (strictness 10, GUI tests on) pass on GitHub's `windows-latest`. Nothing checks what the WebView2 page displays on Windows, and no Windows DAW has been tested.
+- **No DAW testing.** Only Ableton Live 12 is available, and it needs a manual pass (procedure in `docs/testing.md`). Steinberg's VST3 validator hasn't been run (pluginval skips it without the binary; building it needs approval). There is no code signing or notarisation, and no universal (x86_64) macOS build. pluginval and `auval -strict` pass on macOS.
 - **No screen-reader verification** (VoiceOver, NVDA), and keyboard routing inside DAWs is untested.
 - The WebView2 runtime behaviour is untested. A real multi-display pixel-ratio change is untested (it is simulated in Chromium).
 - If the WebView content process crashes without a navigation, gestures stay open until the page reloads or the editor closes.
 - Host state is polled at 30 Hz, so faster host changes are coalesced.
 - `vite build` warns that the main playground chunk is over 500 kB (about 573 kB).
-- Several decisions are open, listed in [docs/releasing.md](docs/releasing.md#open-maintainer-decisions): npm scope, the AGPL/JUCE dependency in example builds, licence headers in bundles, the manufacturer code, the Vite 8 build target, Playwright version age, the AU `network.client` entitlement, editor keyboard focus, initial-commit attribution, and the version number.
+- npm scope, licensing and plug-in identity were decided on 2026-11-20 ([docs/releasing.md](docs/releasing.md#open-maintainer-decisions)). Still open: licence notices in bundles and the pre-distribution checklist (docs/licensing.md), the Vite 8 build target, Playwright version age, the AU `network.client` entitlement, editor keyboard focus, initial-commit attribution and the version number.
 
 ## [0.1.0] - 2026-11-20 (untagged source import)
 
