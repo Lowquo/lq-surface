@@ -45,10 +45,10 @@ jobs:
           - name: Windows (VST3 + WebView2)
             os: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -57,7 +57,7 @@ jobs:
       - name: Build and package the web UI (deterministic ZIP)
         run: npm run pack:juce
       - name: Check out JUCE ${{ env.JUCE_VERSION }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: juce-framework/JUCE
           ref: ${{ env.JUCE_COMMIT }}
@@ -68,7 +68,7 @@ jobs:
         run: grep -q "project(JUCE VERSION ${JUCE_VERSION} " _deps/JUCE/CMakeLists.txt
       - name: Cache WebView2 SDK
         if: runner.os == 'Windows'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/nuget
           key: webview2-${{ env.WEBVIEW2_VERSION }}
