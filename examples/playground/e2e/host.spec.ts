@@ -12,15 +12,42 @@ const count = (calls: NativeCall[], name: string): number => calls.filter((c) =>
 const setsFor = (calls: NativeCall[], id: string): NativeCall[] =>
   calls.filter((c) => c.name === 'surfaceSetParameter' && c.params[0] === id);
 /**
- * An axis the user did not touch never changes value on the host. The controller dedupes
- * against the last value it sent, so before its first send it may write the unchanged
- * value once; it never writes anything else.
+ * An axis the user did not touch never changes value on the host. By contract the first change
+ * of each gesture sends all three axes (a snapshot), and later changes only the axes that moved,
+ * so an untouched axis is written at most once per gesture, always with its unchanged value.
  */
-const expectUntouched = (calls: NativeCall[], id: string, value: number): void => {
+const expectUntouched = (calls: NativeCall[], id: string, value: number, gestures = 1): void => {
   const sets = setsFor(calls, id);
-  expect(sets.length, `${id} writes`).toBeLessThanOrEqual(1);
+  expect(sets.length, `${id} writes`).toBeLessThanOrEqual(gestures);
   for (const set of sets) expect(set.params[1], `${id} value`).toBeCloseTo(value, 9);
 };
+
+/**
+ * Waits until every opened gesture is closed AND no native call has arrived for longer than the
+ * 400 ms discrete-gesture idle window, then returns the calls. A gesture that never closes makes
+ * this time out, so leaks still fail. Unlike settledCalls() it does not assume how many gestures a
+ * burst of real input events produces: on a slow runner, events can legitimately be > 400 ms apart.
+ */
+async function quietCalls(page: Page): Promise<NativeCall[]> {
+  let previous = -1;
+  await expect.poll(async () => {
+    const calls = await nativeCalls(page);
+    const open = count(calls, 'surfaceBeginGesture') - count(calls, 'surfaceEndGesture');
+    const quiet = calls.length === previous;
+    previous = calls.length;
+    return open === 0 && quiet;
+  }, { message: 'all gestures closed and no new native calls', intervals: [600], timeout: 20_000 }).toBe(true);
+  await flushTasks(page);
+  return nativeCalls(page);
+}
+
+/** Gestures per axis; every gesture must cover all three axes, and the count is returned. */
+function gesturesOf(calls: NativeCall[]): number {
+  const g = expectBalanced(calls);
+  expect(g.surface_y, 'y gestures').toBe(g.surface_x);
+  expect(g.surface_z, 'z gestures').toBe(g.surface_x);
+  return g.surface_x ?? 0;
+}
 
 /** Waits for every opened gesture to be closed by the host side of the bridge. */
 async function settledCalls(page: Page, ends: number): Promise<NativeCall[]> {
@@ -55,25 +82,52 @@ test.describe('host gestures through a mocked JUCE backend', () => {
     expect(setsFor(calls, 'surface_x').length).toBeLessThanOrEqual(6);
   });
 
-  test('a held arrow key and a wheel burst are each coalesced into one gesture', async ({ page }) => {
+  test('a synchronous key burst and a synchronous wheel burst are each exactly one gesture', async ({ page }) => {
+    // Dispatched within one task, so the events are guaranteed to fall inside the 400 ms idle
+    // window regardless of runner speed. This is the strict coalescing check.
+    const ball = page.locator('.lq-trackball');
+    await ball.focus();
+    await ball.evaluate((el) => {
+      for (let i = 0; i < 12; i += 1) el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+      el.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    });
+    let calls = await quietCalls(page);
+    expect(expectBalanced(calls)).toEqual(ALL_ONCE);
+    const lastX = setsFor(calls, 'surface_x').at(-1)!;
+    expect(lastX.params[1]).toBeCloseTo((12 * 0.02 + 1) / 2, 6);
+
+    await ball.evaluate((el) => {
+      for (let i = 0; i < 6; i += 1) el.dispatchEvent(new WheelEvent('wheel', { deltaY: -40, bubbles: true, cancelable: true }));
+    });
+    calls = await quietCalls(page);
+    expect(expectBalanced(calls)).toEqual({ surface_x: 2, surface_y: 2, surface_z: 2 });
+  });
+
+  test('a held arrow key and a wheel burst (real input) stay balanced and coalesced', async ({ page }) => {
+    // Real CDP input. Each burst normally forms one gesture, but a loaded runner can space events
+    // more than 400 ms apart, which correctly yields more. Never more gestures than inputs.
     await page.locator('.lq-trackball').focus();
     for (let i = 0; i < 12; i += 1) await page.keyboard.down('ArrowRight'); // auto-repeat
     await page.keyboard.up('ArrowRight');
-    let calls = await settledCalls(page, 3);
-    expect(expectBalanced(calls)).toEqual(ALL_ONCE);
+    let calls = await quietCalls(page);
+    const keyGestures = gesturesOf(calls);
+    expect(keyGestures).toBeGreaterThanOrEqual(1);
+    expect(keyGestures).toBeLessThanOrEqual(12);
     // Only x changed; queued writes may coalesce, but never exceed one per key press.
     expect(setsFor(calls, 'surface_x').length).toBeGreaterThanOrEqual(1);
     expect(setsFor(calls, 'surface_x').length).toBeLessThanOrEqual(12);
-    expectUntouched(calls, 'surface_y', 0.5);
-    expectUntouched(calls, 'surface_z', 0.5);
+    expectUntouched(calls, 'surface_y', 0.5, keyGestures);
+    expectUntouched(calls, 'surface_z', 0.5, keyGestures);
     const lastX = calls.filter((c) => c.name === 'surfaceSetParameter' && c.params[0] === 'surface_x').at(-1)!;
     expect(lastX.params[1]).toBeCloseTo((12 * 0.02 + 1) / 2, 6);
 
     const g = await geometry(page.locator('.lq-trackball'));
     await page.mouse.move(g.cx, g.cy);
     for (let i = 0; i < 6; i += 1) await page.mouse.wheel(0, -40);
-    calls = await settledCalls(page, 6);
-    expect(expectBalanced(calls)).toEqual({ surface_x: 2, surface_y: 2, surface_z: 2 });
+    calls = await quietCalls(page);
+    const wheelGestures = gesturesOf(calls) - keyGestures;
+    expect(wheelGestures).toBeGreaterThanOrEqual(1);
+    expect(wheelGestures).toBeLessThanOrEqual(6);
   });
 
   test('a keyboard gesture interrupted by a drag never overlaps', async ({ page }) => {
@@ -92,12 +146,15 @@ test.describe('host gestures through a mocked JUCE backend', () => {
   test('range sliders: keyboard bursts coalesce, a pointer drag is one gesture', async ({ page }) => {
     await page.locator('#z').focus();
     for (let i = 0; i < 8; i += 1) await page.keyboard.press('ArrowRight');
-    let calls = await settledCalls(page, 3);
-    expect(expectBalanced(calls)).toEqual(ALL_ONCE);
+    // Normally one gesture; a loaded runner may space the presses > 400 ms apart (see quietCalls).
+    let calls = await quietCalls(page);
+    const keyGestures = gesturesOf(calls);
+    expect(keyGestures).toBeGreaterThanOrEqual(1);
+    expect(keyGestures).toBeLessThanOrEqual(8);
     expect(setsFor(calls, 'surface_z').length).toBeGreaterThanOrEqual(1);
     expect(setsFor(calls, 'surface_z').length).toBeLessThanOrEqual(8);
-    expectUntouched(calls, 'surface_x', 0.5);
-    expectUntouched(calls, 'surface_y', 0.5);
+    expectUntouched(calls, 'surface_x', 0.5, keyGestures);
+    expectUntouched(calls, 'surface_y', 0.5, keyGestures);
     expect((await nativeStore(page)).z).toBeCloseTo(Number(await page.locator('#z').inputValue()), 6);
 
     await page.locator('#x').scrollIntoViewIfNeeded();
@@ -106,12 +163,12 @@ test.describe('host gestures through a mocked JUCE backend', () => {
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.7, box.y + box.height / 2, { steps: 5 });
     await page.mouse.up();
-    calls = await settledCalls(page, 6);
-    expect(expectBalanced(calls)).toEqual({ surface_x: 2, surface_y: 2, surface_z: 2 });
+    calls = await quietCalls(page);
+    expect(gesturesOf(calls), 'a pointer drag is exactly one gesture').toBe(keyGestures + 1);
 
     await page.locator('#reset').click();
-    calls = await settledCalls(page, 9);
-    expect(expectBalanced(calls)).toEqual({ surface_x: 3, surface_y: 3, surface_z: 3 });
+    calls = await quietCalls(page);
+    expect(gesturesOf(calls), 'reset is exactly one gesture').toBe(keyGestures + 2);
   });
 
   test('host state updates the UI and is never echoed back', async ({ page }) => {
