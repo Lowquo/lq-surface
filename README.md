@@ -149,7 +149,7 @@ Developers are encouraged to fork the repository and submit pull requests.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development instructions, contribution guidelines and the pull request process.
 
-For technical discussions and proposed features, please use [GitHub Discussions](https://github.com/Lowquo/lq-surface/discussions) when available.
+For technical discussions and proposed features, please use [GitHub Discussions](https://github.com/Lowquo/lq-surface/discussions).
 
 Please also read the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and report vulnerabilities privately as described in [SECURITY.md](SECURITY.md). Further documentation:
 

@@ -92,7 +92,7 @@ GitHub's UI and available features change, and some ruleset features depend on t
 
 ### General
 
-- Issues: enabled. Discussions: enabled if you want a roadmap forum.
+- Issues: enabled. Discussions: enabled (2026-11-20) for questions, ideas and design proposals, with GitHub's default categories (Announcements, General, Ideas, Polls, Q&A, Show and tell). The issue-template chooser links to it.
 - Forking: allowed. Default branch: `main`.
 - Merge methods: your choice. A squash merge records the PR author as the commit author.
 
