@@ -23,7 +23,7 @@ The changes below are **breaking relative to the untagged starter** (commit `3df
   - an optional region set and `{ sharpness }` option on `regionWeights`;
   - `dominantRegion(weights)` and `blendRegionValues(pose, { regions, neutral, targets })`;
   - the constants `DEFAULT_REGION_SHARPNESS` and `REGION_NEUTRAL_RADIUS`.
-- 41 unit tests, including seeded randomised property tests, and fixtures that pin `regionWeights` to its 0.1.0 output. With the default regions the output is bit-identical.
+- 42 unit tests, including seeded randomised property tests. Two tests pin `regionWeights` with the default regions to 0.1.0: bit-identical to a verbatim port of the 0.1.0 code on the same runtime, and within 4 ulps of the outputs captured on Node 22, on any runtime.
 
 **`@lowquo/surface-controls`**
 
@@ -144,6 +144,7 @@ The changes below are **breaking relative to the untagged starter** (commit `3df
 
 ### Fixed
 
+- **The npm release verification failed on Node 24** (`regions.test.mjs`). The core regression test compared `regionWeights` with fixtures captured on Node 22 using `Object.is`. V8 13.6 (Node 24) computes some `Math.pow` results 1 ulp differently from V8 12.4 (Node 22), so some weights moved by up to 2 ulps (about 1.6e-20 for the reported CRUSH value). This was not a regression: the unmodified 0.1.0 code shows the same drift on Node 24, and the current code is bit-identical to it on Node 22, 24 and 25. The fixtures are unchanged. They are now compared with a documented 4-ulp tolerance (exact zeros stay exact). A new test requires bit-for-bit equality with a verbatim port of the 0.1.0 code on the same runtime. Both tests catch a sharpness change of 1e-9 or a region-angle change of 1e-12 rad, and the exact test also catches numerically equivalent rewrites.
 - **CI failed on all three OSes before installing anything.** `actions/setup-node@v4` with `cache: npm` stopped with "Dependencies lock file is not found", because `package-lock.json` had never been committed. The lockfile is now committed (Node 22.23.5 / npm 10.9.9), and CI installs with `npm ci`. The Phase 1 run (commit `b713702`) was verified green on ubuntu, macOS and windows.
 - **`npm run typecheck` would have failed on a clean checkout.** Dependents resolve `@lowquo/surface` through `exports` to `dist/index.d.ts`, which didn't exist before a build. The fix is TypeScript project references (`tsc -b`, `composite: true`), plus a root `build:packages` that `typecheck`, `test`, `dev` and `check:pack` run first.
 - Removed the invalid `packageManager: "npm@10"` field. The field expects an exact version.

@@ -38,7 +38,7 @@ A region is a named direction: `{ name, angle }`.
 - `DEFAULT_REGIONS` holds five illustrative labels (PUNCH at the top, then TONE, CLIP, CRUSH and GLUE clockwise). You can pass any region set, for example one from `evenlySpacedRegions(names, startAngle)`.
 - `regionWeights(pose, regions?, { sharpness? })` gives each region `closeness ** sharpness`, normalised to sum to 1, where `closeness = max(0, (1 + cos Δ) / 2)`. The default sharpness is 4.
   - Below radius `1e-8` all weights are exactly `0`.
-  - With the defaults, results are bit-identical to 0.1.0.
+  - With the defaults, the computation is the 0.1.0 formula: bit-identical to 0.1.0 on the same JavaScript engine, and within a few ulps across engines or engine versions (`Math.pow`, `Math.sin`, `Math.cos` and `Math.hypot` are implementation-approximated; Node 22 vs Node 24/25 differ by at most 2 ulps).
 - `dominantRegion(weights)` returns the leading region, or `undefined` at neutral.
 - `blendRegionValues(pose, { regions, neutral, targets })` morphs a vector of UI values: `(1 − a) · neutral + a · Σ wᵢ · targetᵢ`, where `a = intensity(pose)`.
 

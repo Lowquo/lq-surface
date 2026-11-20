@@ -5,6 +5,7 @@ import {
   DEFAULT_REGIONS, DEFAULT_REGION_SHARPNESS, REGION_NEUTRAL_RADIUS, NEUTRAL_POSE,
 } from '../dist/index.js';
 import { LEGACY_REGION_ORDER, LEGACY_REGION_WEIGHTS } from './legacy-fixtures.mjs';
+import { legacyRegionWeights } from './legacy-reference.mjs';
 import { prng, randomInDisk, randomFarPoint, direction, TAU, NON_FINITE, sum } from './helpers.mjs';
 
 const EPS = Number.EPSILON;
@@ -13,18 +14,68 @@ const at = (angle, radius = 1, z = 0.5) => {
   return { x: radius * d.x, y: radius * d.y, z };
 };
 
-test('default output is bit-identical to version 0.1.0 (captured fixtures)', () => {
+// The four ways of asking for the default regions must all give the same result.
+const defaultRegionCalls = (pose) => [
+  regionWeights(pose),
+  regionWeights(pose, DEFAULT_REGIONS),
+  regionWeights(pose, undefined, { sharpness: 4 }),
+  regionWeights(pose, evenlySpacedRegions(['PUNCH', 'TONE', 'CLIP', 'CRUSH', 'GLUE'])),
+];
+
+// Distance in units in the last place between two doubles of the same sign (weights are >= 0;
+// values of opposite sign, or a zero against a non-zero, give a huge distance and fail).
+const f64 = new Float64Array(1);
+const i64 = new BigInt64Array(f64.buffer);
+const bitsOf = (value) => { f64[0] = value; return i64[0]; };
+const ulpDistance = (a, b) => { const d = bitsOf(a) - bitsOf(b); return d < 0n ? -d : d; };
+
+/**
+ * Tolerance for comparing against the captured 0.1.0 fixtures on any runtime, in ulps.
+ *
+ * The fixtures were captured on Node 22 (V8 12.4). Math.pow, Math.sin, Math.cos and Math.hypot
+ * are implementation-approximated in ECMAScript, and V8 13.6+ (Node 24+) returns some Math.pow
+ * results 1 ulp apart, which moves some weights by up to 2 ulps (relative 2.8e-16, absolute
+ * 1.1e-16). The 0.1.0 code itself shows exactly that drift on Node 24, so it is a property of the
+ * runtime, not a regression. 4 ulps leaves 2x headroom.
+ *
+ * This cannot hide a meaningful change: altering the sharpness by 1e-9, or every region angle by
+ * 1e-12 rad, moves every one of the 88 fixture rows by millions of ulps or more. Exact zeros must
+ * stay exact. The next test additionally requires bit-for-bit equality with the 0.1.0 formula
+ * evaluated on the same runtime.
+ */
+const FIXTURE_ULP_TOLERANCE = 4n;
+
+test('default output matches the captured 0.1.0 fixtures within 4 ulps on any runtime', () => {
   assert.equal(LEGACY_REGION_WEIGHTS.length, 88);
   for (const [x, y, z, expected] of LEGACY_REGION_WEIGHTS) {
     const pose = { x, y, z };
-    for (const weights of [
-      regionWeights(pose),
-      regionWeights(pose, DEFAULT_REGIONS),
-      regionWeights(pose, undefined, { sharpness: 4 }),
-      regionWeights(pose, evenlySpacedRegions(['PUNCH', 'TONE', 'CLIP', 'CRUSH', 'GLUE'])),
-    ]) {
+    for (const weights of defaultRegionCalls(pose)) {
       assert.deepEqual(weights.map((w) => w.name), LEGACY_REGION_ORDER);
-      weights.forEach((w, i) => assert.ok(Object.is(w.weight, expected[i]), `${JSON.stringify(pose)} ${w.name}: ${w.weight} !== ${expected[i]}`));
+      weights.forEach((w, i) => {
+        const where = `${JSON.stringify(pose)} ${w.name}: ${w.weight} vs fixture ${expected[i]}`;
+        if (expected[i] === 0) assert.ok(Object.is(w.weight, 0), `${where} (an exact zero must stay exactly 0)`);
+        else assert.ok(ulpDistance(w.weight, expected[i]) <= FIXTURE_ULP_TOLERANCE, `${where} (${ulpDistance(w.weight, expected[i])} ulp)`);
+      });
+    }
+  }
+});
+
+test('default output is bit-identical to the 0.1.0 formula evaluated on this runtime', () => {
+  // legacyRegionWeights is a verbatim port of the 0.1.0 code (see legacy-reference.mjs). Both run on
+  // the same engine and share its Math implementation, so exact equality holds on every runtime and
+  // any change to the computation fails here.
+  const rand = prng(0x0_1_0);
+  const poses = LEGACY_REGION_WEIGHTS.map(([x, y, z]) => ({ x, y, z }));
+  for (let i = 0; i < 3000; i += 1) poses.push(randomInDisk(rand, 0.999999));
+  // Around the neutral threshold (radius 1e-8), where 0.1.0 switches to all-zero weights.
+  for (const r of [0, 5e-9, 9.99e-9, 1e-8, 1.001e-8, 2e-8]) {
+    for (const angle of [0, 1, 2.5, 4]) poses.push({ x: r * direction(angle).x, y: r * direction(angle).y, z: 0.5 });
+  }
+  for (const pose of poses) {
+    const expected = legacyRegionWeights(pose);
+    for (const weights of defaultRegionCalls(pose)) {
+      assert.deepEqual(weights.map((w) => w.name), expected.map((w) => w.name));
+      weights.forEach((w, i) => assert.ok(Object.is(w.weight, expected[i].weight), `${JSON.stringify(pose)} ${w.name}: ${w.weight} !== ${expected[i].weight}`));
     }
   }
 });

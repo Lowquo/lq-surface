@@ -45,7 +45,7 @@ git status --porcelain   # must print nothing
 
 All of these must be green on the release PR's head commit:
 
-- [ ] `Typecheck, build and test (ubuntu-latest)`, `(macos-latest)`, `(windows-latest)`, from the `CI` workflow: install, typecheck, build, unit tests, `check:pack`, clean tree.
+- [ ] `Typecheck, build and test (ubuntu-latest)`, `(macos-latest)`, `(windows-latest)` and the same three with `, Node 24`, from the `CI` workflow: install, typecheck, build, unit tests, `check:pack`, clean tree.
 - [ ] `Playwright (Chromium) on ubuntu-latest`, `… on macos-latest`, `… on windows-latest`, from the `Browser tests` workflow.
 - [ ] `macOS (AU + VST3)` and `Windows (VST3 + WebView2)`, from the `JUCE example` workflow. The macOS WebView smoke step is `continue-on-error`, so open its log and confirm that it passed. Treat a failure there as a release blocker unless it's explained.
 

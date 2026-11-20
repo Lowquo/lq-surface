@@ -121,6 +121,7 @@ In **Settings → Rules → Rulesets**, create a branch ruleset that targets the
   | `Typecheck, build and test (ubuntu-latest)` | `CI` (`ci.yml`) | Verified on GitHub. Includes `check:pack`. |
   | `Typecheck, build and test (macos-latest)` | `CI` | |
   | `Typecheck, build and test (windows-latest)` | `CI` | |
+  | `Typecheck, build and test (ubuntu-latest, Node 24)`, `(macos-latest, Node 24)`, `(windows-latest, Node 24)` | `CI` | The same job on Node 24, the runtime of the npm release workflow. |
   | `Playwright (Chromium) on ubuntu-latest` | `Browser tests` (`browser.yml`) | First GitHub run passed (run 44738961923) |
   | `Playwright (Chromium) on macos-latest` | `Browser tests` | |
   | `Playwright (Chromium) on windows-latest` | `Browser tests` | |

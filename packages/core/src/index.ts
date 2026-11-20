@@ -288,8 +288,12 @@ const MIN_RELIABLE_TOTAL = 2 ** -1000;
  *   opposite every region) the weights are computed relative to the closest
  *   region instead, which is mathematically equivalent; exact ties share
  *   equally.
- * - With the default regions and sharpness the output is bit-identical to
- *   `regionWeights(pose)` in version 0.1.0.
+ * - With the default regions and sharpness the computation is the 0.1.0
+ *   formula: on the same JavaScript engine the output is bit-identical to
+ *   `regionWeights(pose)` in version 0.1.0. `Math.pow`, `Math.sin`, `Math.cos`
+ *   and `Math.hypot` are implementation-approximated, so across engines or
+ *   engine versions the last bit can differ (measured: at most 2 ulps between
+ *   Node 22 and Node 24/25).
  *
  * @param regions Defaults to {@link DEFAULT_REGIONS}. An empty array gives `[]`.
  * @throws RangeError if `sharpness` is not finite and `> 0`, or a region angle is not finite.
