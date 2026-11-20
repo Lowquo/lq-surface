@@ -1,0 +1,14 @@
+{
+  "name": "@lowquo/surface-playground",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {"dev": "vite --host 127.0.0.1", "build": "vite build", "typecheck": "tsc -p tsconfig.json --noEmit"},
+  "dependencies": {
+    "@lowquo/surface": "^0.1.0",
+    "@lowquo/surface-controls": "^0.1.0",
+    "@lowquo/surface-juce": "^0.1.0",
+    "@juce-framework/webview": "^1.0.0",
+    "three": "^0.187.0"
+  }
+}

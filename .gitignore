@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.log
+*.tsbuildinfo
+.vscode/
+.idea/
+build/
+examples/juce-plugin/resources/surface-ui.zip

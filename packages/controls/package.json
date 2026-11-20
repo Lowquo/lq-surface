@@ -1,0 +1,13 @@
+{
+  "name": "@lowquo/surface-controls",
+  "version": "0.1.0",
+  "description": "Three.js 3D controls for audio interfaces",
+  "type": "module",
+  "license": "MIT",
+  "files": ["dist", "README.md"],
+  "exports": {".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"}},
+  "types": "./dist/index.d.ts",
+  "scripts": {"build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit"},
+  "dependencies": {"@lowquo/surface": "^0.1.0"},
+  "peerDependencies": {"three": "^0.187.0"}
+}

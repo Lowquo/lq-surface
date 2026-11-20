@@ -1,0 +1,4 @@
+# Enable a Sponsor button only once the accounts actually exist.
+# Confirm the exact profile IDs, then uncomment either or both lines:
+# github: [dholdaway]
+# buy_me_a_coffee: VERIFIED_BUY_ME_A_COFFEE_USERNAME

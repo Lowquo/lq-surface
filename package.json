@@ -1,0 +1,19 @@
+{
+  "name": "lq-surface-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "npm@10",
+  "engines": {"node": ">=22"},
+  "workspaces": ["packages/*", "examples/playground"],
+  "scripts": {
+    "build": "npm run build -w @lowquo/surface && npm run build -w @lowquo/surface-controls && npm run build -w @lowquo/surface-juce && npm run build -w @lowquo/surface-playground",
+    "typecheck": "npm run typecheck -w @lowquo/surface && npm run typecheck -w @lowquo/surface-controls && npm run typecheck -w @lowquo/surface-juce && npm run typecheck -w @lowquo/surface-playground",
+    "test": "npm run test -w @lowquo/surface && npm run test -w @lowquo/surface-juce",
+    "dev": "npm run dev -w @lowquo/surface-playground",
+    "pack:juce": "npm run build && python3 scripts/pack_juce.py",
+    "clean": "node scripts/clean.mjs"
+  },
+  "devDependencies": {"typescript": "^5.9.3", "vite": "^7.1.12", "@types/three": "^0.187.0"},
+  "license": "MIT"
+}
