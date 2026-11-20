@@ -12,7 +12,7 @@ Scope: MIT-licensed UI framework, **not** lq-hit DSP. Never add lq-hit proprieta
 
 ## Before opening a PR
 
-Run `npm ci` after committing the generated lockfile (otherwise `npm install`), `npm run build`, `npm run typecheck`, `npm test`. For C++ edits additionally build the JUCE example on supported OSes where available. Do not claim macOS/Windows builds passed without running them.
+Run `npm ci` (the lockfile is committed; use `npm install` only to change dependencies, and commit the updated lockfile), `npm run build`, `npm run typecheck`, `npm test` and `npm run check:pack`. For controls, input, rendering or playground changes, also run `npm run test:e2e` after `npm run build` (install Chromium once with `npx playwright install chromium`). For C++ edits, additionally build the JUCE example and run `ctest` on supported OSes where available (`npm run pack:juce`, then the CMake and `ctest` commands in `examples/juce-plugin/README.md`). Do not claim macOS/Windows builds passed without running them. See `CONTRIBUTING.md` and `docs/testing.md`.
 
 ## Commit identity
 

@@ -31,8 +31,9 @@ export type TrackballOptions = {
 };
 
 const DEFAULT_LABEL = 'Surface position';
-const DEFAULT_DESCRIPTION = 'Arrow keys move the position. Page Up and Page Down change twist. '
-  + 'Hold Shift for fine steps. Home or 0 resets to the centre. Escape cancels a drag.';
+const DEFAULT_DESCRIPTION = 'Arrow keys move the position. Page Up and Page Down, or Alt with Up and Down, '
+  + 'change twist; the mouse wheel also changes twist. Hold Shift, Control or Command for fine steps. '
+  + 'Home or 0 resets to the centre. Escape cancels a drag.';
 /** Value text is refreshed, and user changes announced, this long after the last change. */
 const TEXT_DELAY_MS = 350;
 const MAX_PIXEL_RATIO = 2;

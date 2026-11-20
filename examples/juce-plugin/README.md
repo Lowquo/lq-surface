@@ -1,6 +1,6 @@
 # JUCE WebView plugin example (not lq-hit)
 
-A minimal stereo **passthrough** plug-in (VST3 everywhere, AU on macOS) whose editor is the bundled
+A minimal stereo **passthrough** plug-in (VST3 on macOS and Windows, AU on macOS) whose editor is the bundled
 lq-surface playground running in a JUCE `WebBrowserComponent`. The trackball drives three
 host-automatable parameters. Audio is never modified: there is no DSP, no commercial algorithm and
 no lq-hit code in this example.
@@ -165,8 +165,9 @@ with JUCE 9.0.4:
 
 Not verified:
 
-- **Windows**: no Windows machine was available. `.github/workflows/juce.yml` builds the VST3 with
-  the WebView2 SDK and runs the headless tests, but it has not run yet; treat Windows as untested.
+- **Windows**: no local Windows machine was available. The `JUCE example` workflow builds the VST3
+  with the WebView2 SDK on GitHub's `windows-latest` (MSVC 14.52) and the headless suite passes there
+  (run 44738961969). The editor and the WebView2 runtime have not been run on Windows.
 - No DAW testing, no `pluginval` or `auval` run (these need maintainer approval), no code signing
   or notarisation, no universal (x86_64) macOS build.
 - Linux is not a target of this example.

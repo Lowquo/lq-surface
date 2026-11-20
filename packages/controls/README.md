@@ -11,21 +11,42 @@ npm install @lowquo/surface @lowquo/surface-controls three
 ## Quick start
 
 ```ts
+import type { Pose } from '@lowquo/surface';
 import { Trackball } from '@lowquo/surface-controls';
 
-const trackball = new Trackball(document.querySelector('#trackball')!, {
+// Any host connection with this shape works, e.g. SurfaceHostSession from @lowquo/surface-juce.
+interface Host {
+  begin(): void;
+  change(pose: Pose): void;
+  end(): void;
+  onHostState(listener: (pose: Pose) => void): () => void;
+}
+declare const host: Host;
+
+let deferred: Pose | null = null; // latest host state that arrived during a user gesture
+
+const trackball = new Trackball(document.querySelector<HTMLElement>('#trackball')!, {
   onGestureStart: () => host.begin(),        // e.g. beginChangeGesture on all three parameters
   onChange: (pose) => host.change(pose),     // user changes only
-  onGestureEnd: () => host.end(),
+  onGestureEnd: () => {
+    host.end();
+    if (deferred) { trackball.setPose(deferred); deferred = null; }
+  },
 });
 
-// Host automation: never echoes back, because onChange is not called.
-host.onState((pose) => {
-  if (!trackball.isInteracting()) trackball.setPose(pose);
+// Host automation. setPose(pose) does not call onChange, so nothing is echoed back.
+// Keep (don't drop) updates that arrive mid-gesture so the ball isn't moved under the pointer.
+host.onHostState((pose) => {
+  if (trackball.isInteracting()) deferred = pose;
+  else trackball.setPose(pose);
 });
 
+// Later:
 trackball.dispose();
 ```
+
+`SurfaceHostSession` already holds host updates back while a gesture is open and re-reads the
+host's state once it is idle, so with it the deferral above is a safety net.
 
 ## Pose contract
 

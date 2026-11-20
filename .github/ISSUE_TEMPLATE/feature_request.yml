@@ -1,18 +1,53 @@
 name: Feature proposal
-description: Suggest a useful control or integration improvement
+description: Propose a control, integration or tooling improvement
 title: "feat: "
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the **problem first**, then a possible solution. lq-surface is an MIT-licensed UI toolkit. Audio processing (DSP) and lowquo proprietary algorithms are out of scope.
   - type: textarea
     id: problem
     attributes:
       label: Problem or use case
+      description: What are you trying to do, and what stops you today? Who is affected (plugin developers, end users, assistive-technology users, ...)?
     validations: { required: true }
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - "`@lowquo/surface` (core)"
+        - "`@lowquo/surface-controls`"
+        - "`@lowquo/surface-juce`"
+        - Playground example
+        - JUCE plugin example
+        - Build, CI or tooling
+        - Documentation
   - type: textarea
     id: proposal
     attributes:
       label: Proposed approach
+      description: Optional. API sketch, interaction model or behaviour.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This does not require adding DSP, lq-hit or other proprietary algorithms or assets to this repository.
+          required: true
+        - label: This does not require runtime network access from a plugin.
+          required: false
+        - label: I searched existing issues and discussions.
+          required: true
   - type: textarea
     id: constraints
     attributes:
       label: Accessibility, compatibility or test considerations
+      description: Keyboard and screen-reader behaviour, host or WebView compatibility, how it could be tested.

@@ -13,19 +13,29 @@ The native counterpart is the [JUCE example](../../examples/juce-plugin/README.m
 
 ```ts
 import { SurfaceHostSession } from '@lowquo/surface-juce';
+import type { JuceEventBackend } from '@lowquo/surface-juce';
+import { Trackball } from '@lowquo/surface-controls';
+
 // Inside a JUCE WebView only (the JUCE frontend library is AGPL-3.0-only OR JUCE-licensed):
 const { getNativeFunction } = await import('@juce-framework/webview');
+const juce = (window as unknown as { __JUCE__: { backend: JuceEventBackend } }).__JUCE__;
 
 const host = new SurfaceHostSession({
   lookup: getNativeFunction,
-  backend: window.__JUCE__.backend,
+  backend: juce.backend,
   onError: (error) => console.warn(error),
 });
-host.onHostState((pose) => trackball.setPose(pose)); // apply without notifying the host
-// trackball callbacks:
-host.begin(); host.change(pose); host.end();
-// later
+
+const trackball = new Trackball(document.querySelector<HTMLElement>('#trackball')!, {
+  onGestureStart: () => host.begin(),
+  onChange: (pose) => host.change(pose),
+  onGestureEnd: () => host.end(),
+});
+host.onHostState((pose) => trackball.setPose(pose)); // setPose does not notify the host
+
+// Later:
 host.dispose();
+trackball.dispose();
 ```
 
 - Writes are gesture-balanced; `change()` outside `begin()`/`end()` gets its own gesture.
@@ -36,7 +46,8 @@ host.dispose();
 - Nothing throws and no promise rejection is left unhandled; errors go to `onError`.
 
 `examples/playground/src/host.ts` shows how to detect a JUCE WebView before loading
-`@juce-framework/webview` with a dynamic `import()`, so the plain browser build never includes it.
+`@juce-framework/webview` with a dynamic `import()`, so the plain browser page never loads it. (Vite still emits it as a
+separate chunk in the build output, and it is inside `surface-ui.zip`.)
 
 ## Lower-level API
 
