@@ -3,19 +3,111 @@ description: Report a reproducible bug (not a security vulnerability)
 title: "bug: "
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security vulnerabilities must not be reported here.** Use private vulnerability reporting instead (see SECURITY.md).
+        Before pasting logs, remove personal paths, user names, email addresses and tokens.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - "`@lowquo/surface` (core)"
+        - "`@lowquo/surface-controls`"
+        - "`@lowquo/surface-juce`"
+        - Playground example
+        - JUCE plugin example
+        - Build, CI or tooling
+        - Documentation
+    validations: { required: true }
   - type: textarea
-    id: summary
+    id: actual
     attributes:
       label: What happened?
-      description: Expected and actual behaviour
+      description: Actual behaviour. Include error messages verbatim.
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
     validations: { required: true }
   - type: textarea
     id: reproduce
     attributes:
       label: Steps to reproduce
+      description: Minimal steps from a fresh clone or a fresh host project, if possible.
+      placeholder: |
+        1. npm ci && npm run dev
+        2. Focus the trackball and press ...
+        3. ...
     validations: { required: true }
   - type: input
-    id: environment
+    id: os
     attributes:
-      label: Environment
-      placeholder: OS, browser/DAW, JUCE, Node version
+      label: Operating system and version
+      placeholder: "macOS 15.4 (Apple silicon) / Windows 11 24H2 / Ubuntu 24.04"
+    validations: { required: true }
+  - type: input
+    id: browser
+    attributes:
+      label: Browser or WebView and version
+      description: For plugin issues, give the WebView (WKWebView on macOS, WebView2 runtime version on Windows).
+      placeholder: "Chrome 131 / Safari 18 / WebView2 131.0.x / n/a"
+  - type: input
+    id: host
+    attributes:
+      label: DAW or host and version
+      placeholder: "Reaper 7.x / Logic Pro 11.x / Ableton Live 12.x / n/a (browser only)"
+  - type: dropdown
+    id: format
+    attributes:
+      label: Plugin format
+      options:
+        - n/a (browser only)
+        - VST3
+        - AU
+        - Other (describe below)
+  - type: dropdown
+    id: renderer
+    attributes:
+      label: Trackball renderer
+      description: The `data-renderer` attribute of the focusable `.lq-trackball` element (inspect it in the browser or WebView dev tools).
+      options:
+        - webgl
+        - 2d
+        - "none (no renderer available)"
+        - "Don't know"
+  - type: input
+    id: versions
+    attributes:
+      label: Package versions or commit
+      description: The lq-surface package versions, or the commit SHA you built from.
+      placeholder: "surface 0.1.0, surface-controls 0.1.0, surface-juce 0.1.0 / commit abc1234"
+    validations: { required: true }
+  - type: input
+    id: toolchain
+    attributes:
+      label: Toolchain (if building)
+      placeholder: "Node 22.x / npm 10.x / JUCE 9.0.4 / CMake 3.x / generator / compiler"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Console output, the host's plugin scan log, crash report excerpt, or CI log. Remove any personal information.
+      render: shell
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: Screenshots, recordings, display scaling, multi-monitor setup, assistive technology in use, etc.

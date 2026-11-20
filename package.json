@@ -3,17 +3,32 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "npm@10",
-  "engines": {"node": ">=22"},
-  "workspaces": ["packages/*", "examples/playground"],
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "packages/*",
+    "examples/playground"
+  ],
   "scripts": {
-    "build": "npm run build -w @lowquo/surface && npm run build -w @lowquo/surface-controls && npm run build -w @lowquo/surface-juce && npm run build -w @lowquo/surface-playground",
-    "typecheck": "npm run typecheck -w @lowquo/surface && npm run typecheck -w @lowquo/surface-controls && npm run typecheck -w @lowquo/surface-juce && npm run typecheck -w @lowquo/surface-playground",
-    "test": "npm run test -w @lowquo/surface && npm run test -w @lowquo/surface-juce",
-    "dev": "npm run dev -w @lowquo/surface-playground",
-    "pack:juce": "npm run build && python3 scripts/pack_juce.py",
+    "build:packages": "tsc -b packages/core packages/controls packages/juce",
+    "build": "npm run build:packages && npm run build -w @lowquo/surface-playground",
+    "typecheck": "npm run build:packages && npm run typecheck -w @lowquo/surface-playground",
+    "test": "npm run build:packages && npm run test --workspaces --if-present",
+    "test:e2e": "playwright test -c examples/playground/playwright.config.ts",
+    "dev": "npm run build:packages && npm run dev -w @lowquo/surface-playground",
+    "check:pack": "npm run build:packages && node scripts/check-pack.mjs",
+    "release:dry-run": "npm publish --dry-run --registry=http://127.0.0.1:9/ -w @lowquo/surface -w @lowquo/surface-controls -w @lowquo/surface-juce",
+    "release:check": "npm run typecheck && npm test && npm run check:pack && npm run release:dry-run",
+    "pack:juce": "npm run build && node scripts/pack-juce.mjs",
     "clean": "node scripts/clean.mjs"
   },
-  "devDependencies": {"typescript": "^5.9.3", "vite": "^7.1.12", "@types/three": "^0.187.0"},
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/three": "^0.187.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
+  },
   "license": "MIT"
 }

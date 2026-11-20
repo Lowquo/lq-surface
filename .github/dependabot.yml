@@ -1,12 +1,57 @@
+# Dependabot version updates: weekly for npm and GitHub Actions.
+# Security updates are not delayed by `cooldown` and still open as soon as an
+# advisory is published. Dependabot PRs are never auto-merged; CI must pass and
+# a maintainer reviews each one.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+      day: monday
     open-pull-requests-limit: 5
+    labels: [dependencies, javascript]
+    # Titles become "chore(deps): ..." or "chore(deps-dev): ...".
+    commit-message:
+      prefix: chore
+      include: scope
+    # Supply-chain buffer: skip releases younger than this, giving the registry
+    # and community time to catch compromised or broken publishes.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      # three and @types/three move in lockstep, and 0.x "minor" bumps are
+      # breaking for three. Keep them together and out of the routine group;
+      # the peer range in packages/controls must be updated by hand to match.
+      three:
+        applies-to: version-updates
+        patterns: [three, "@types/three"]
+      # One PR per week for routine minor/patch updates. Major updates match no
+      # group, so each opens its own PR and is reviewed on its own.
+      npm-minor-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: [minor, patch]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
     open-pull-requests-limit: 5
+    labels: [dependencies, github_actions]
+    # Titles become "ci(deps): ...".
+    commit-message:
+      prefix: ci
+      include: scope
+    cooldown:
+      default-days: 7
+    groups:
+      # First-party actions (checkout, setup-node, ...) are validated by a single
+      # CI run, so bump them together, majors included.
+      github-actions:
+        applies-to: version-updates
+        patterns: ["actions/*"]

@@ -4,10 +4,58 @@
   "description": "Three.js 3D controls for audio interfaces",
   "type": "module",
   "license": "MIT",
-  "files": ["dist", "README.md"],
-  "exports": {".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"}},
+  "author": "lowquo",
+  "keywords": [
+    "audio",
+    "audio-plugin",
+    "user-interface",
+    "three",
+    "threejs",
+    "webgl",
+    "trackball",
+    "controls",
+    "accessibility"
+  ],
+  "homepage": "https://github.com/Lowquo/lq-surface/tree/main/packages/controls#readme",
+  "bugs": {
+    "url": "https://github.com/Lowquo/lq-surface/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lowquo/lq-surface.git",
+    "directory": "packages/controls"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "types": "./dist/index.d.ts",
-  "scripts": {"build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit"},
-  "dependencies": {"@lowquo/surface": "^0.1.0"},
-  "peerDependencies": {"three": "^0.187.0"}
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "tsc -b && node ../../scripts/release-guard.mjs"
+  },
+  "dependencies": {
+    "@lowquo/surface": "^0.1.0"
+  },
+  "peerDependencies": {
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "three": "^0.187.0"
+  }
 }

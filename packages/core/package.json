@@ -4,13 +4,48 @@
   "description": "Typed pose, gesture and sound-space primitives for audio interfaces",
   "type": "module",
   "license": "MIT",
-  "files": ["dist", "README.md"],
-  "exports": {".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"}},
+  "author": "lowquo",
+  "keywords": [
+    "audio",
+    "audio-plugin",
+    "user-interface",
+    "gesture",
+    "pose",
+    "parameters",
+    "automation",
+    "typescript"
+  ],
+  "homepage": "https://github.com/Lowquo/lq-surface/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/Lowquo/lq-surface/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lowquo/lq-surface.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "types": "./dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test test/*.test.mjs"
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "tsc -b && node ../../scripts/release-guard.mjs"
   }
 }

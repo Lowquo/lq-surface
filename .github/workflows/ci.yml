@@ -4,12 +4,17 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   js:
     name: Typecheck, build and test
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -20,13 +25,31 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Install dependencies
-        shell: bash
+      - name: Toolchain versions
         run: |
-          if [[ -f package-lock.json ]]; then npm ci; else npm install --no-audit --no-fund; fi
+          node --version
+          npm --version
+      # Deterministic install from the committed package-lock.json. Fails if the
+      # lockfile is missing or out of sync with any workspace package.json.
+      - name: Install dependencies
+        run: npm ci
       - name: Typecheck
         run: npm run typecheck
       - name: Build
         run: npm run build
       - name: Test
         run: npm test
+      # Checks npm pack contents, installs the packed tarballs into a temp
+      # consumer project, and imports/type-checks them (nodenext + bundler).
+      - name: Validate packages (npm pack + tarball smoke test)
+        run: npm run check:pack
+      # `npm publish --dry-run` against an unreachable registry: runs each package's prepublishOnly
+      # (tsc -b + release guard, which allows dry runs) and shows what npm would receive. Never publishes.
+      - name: Publish dry run (no registry)
+        run: npm run release:dry-run
+      # The build must not modify tracked files (e.g. a stale lockfile rewrite).
+      - name: Verify clean working tree
+        shell: bash
+        run: |
+          git status --porcelain
+          test -z "$(git status --porcelain)"

@@ -1,2 +1,16 @@
 import { rmSync } from 'node:fs';
-for (const path of ['packages/core/dist','packages/controls/dist','packages/juce/dist','examples/playground/dist','examples/juce-plugin/resources/surface-ui.zip']) rmSync(path,{recursive:true,force:true});
+
+// dist/ also holds each package's .tsbuildinfo, so removing it forces a full `tsc -b` rebuild.
+const paths = [
+  'packages/core/dist',
+  'packages/controls/dist',
+  'packages/juce/dist',
+  'examples/playground/dist',
+  'examples/juce-plugin/resources/surface-ui.zip',
+  'test-results',
+  'playwright-report',
+  'blob-report',
+  'examples/playground/test-results',
+  'examples/playground/playwright-report',
+];
+for (const path of paths) rmSync(path, { recursive: true, force: true });
