@@ -1,0 +1,104 @@
+name: JUCE example
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: juce-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  # Must match the JUCE version the example is developed and verified against.
+  JUCE_VERSION: '9.0.4'
+  # Commit of refs/tags/9.0.4 (git ls-remote https://github.com/juce-framework/JUCE).
+  JUCE_COMMIT: 3fb5cbc0340758596dac39f7c8de47d562b4896e
+  # Version suggested by JUCE 9.0.4's extras/Build/CMake/FindWebView2.cmake.
+  WEBVIEW2_VERSION: '1.0.3485.44'
+jobs:
+  plugin:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (AU + VST3)
+            os: macos-latest
+          - name: Windows (VST3 + WebView2)
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and package the web UI (deterministic ZIP)
+        run: npm run pack:juce
+      - name: Check out JUCE ${{ env.JUCE_VERSION }}
+        uses: actions/checkout@v4
+        with:
+          repository: juce-framework/JUCE
+          ref: ${{ env.JUCE_COMMIT }}
+          path: _deps/JUCE
+          persist-credentials: false
+      - name: Verify JUCE version
+        shell: bash
+        run: grep -q "project(JUCE VERSION ${JUCE_VERSION} " _deps/JUCE/CMakeLists.txt
+      - name: Cache WebView2 SDK
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/nuget
+          key: webview2-${{ env.WEBVIEW2_VERSION }}
+      # Build-time only: headers and WebView2LoaderStatic.lib from the NuGet package. End users
+      # need the Microsoft Edge WebView2 Runtime (preinstalled on current Windows 10/11).
+      - name: Install WebView2 SDK (NuGet)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'nuget'
+          nuget install Microsoft.Web.WebView2 -Version $env:WEBVIEW2_VERSION -OutputDirectory $out -NonInteractive
+          Get-ChildItem $out
+      - name: Configure
+        shell: bash
+        run: >
+          cmake -S examples/juce-plugin -B build/juce-ci
+          -DCMAKE_BUILD_TYPE=Release
+          -DJUCE_SOURCE_DIR="${{ github.workspace }}/_deps/JUCE"
+          -DJUCE_WEBVIEW2_PACKAGE_LOCATION="${{ runner.temp }}/nuget"
+          -DLQ_SURFACE_WEBVIEW_SMOKE_TEST=${{ runner.os == 'macOS' && 'ON' || 'OFF' }}
+      - name: Build plug-in and native tests
+        run: cmake --build build/juce-ci --config Release --parallel 4
+      - name: Headless native tests
+        run: ctest --test-dir build/juce-ci -C Release --output-on-failure --label-exclude gui
+      # Off-screen WKWebView end-to-end check. Informational until it has proven stable on
+      # hosted runners.
+      - name: WebView smoke test (macOS)
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        run: ctest --test-dir build/juce-ci -C Release --output-on-failure --label-regex gui
+      - name: Inspect bundles (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd "build/juce-ci/LqSurfaceExample_artefacts/Release"
+          for bundle in "AU/lq-surface example.component" "VST3/lq-surface example.vst3"; do
+            test -f "$bundle/Contents/Info.plist"
+            plutil -lint "$bundle/Contents/Info.plist"
+            lipo -info "$bundle/Contents/MacOS/lq-surface example"
+          done
+          test -f "VST3/lq-surface example.vst3/Contents/Resources/moduleinfo.json"
+      - name: Inspect bundle (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          ls -R "build/juce-ci/LqSurfaceExample_artefacts/Release/VST3"
+          test -f "build/juce-ci/LqSurfaceExample_artefacts/Release/VST3/lq-surface example.vst3/Contents/x86_64-win/lq-surface example.vst3"

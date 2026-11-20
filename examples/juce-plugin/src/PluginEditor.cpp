@@ -1,96 +1,166 @@
 #include "PluginEditor.h"
-#include <BinaryData.h>
-#include <memory>
-#include <cmath>
+#include "EmbeddedAssets.h"
+#include "SurfaceParameters.h"
 
-namespace {
-using Resource = juce::WebBrowserComponent::Resource;
-
-juce::ZipFile& uiArchive() {
-    // BinaryData ownership is static. ZipFile retains the stream reference.
-    static int size = 0;
-    static const auto* bytes = BinaryData::getNamedResource("surface_ui_zip", size);
-    static juce::MemoryInputStream stream(bytes, static_cast<size_t>(size), false);
-    static juce::ZipFile zip(stream);
-    return zip;
+namespace
+{
+lqsurface::EmbeddedUiArchive openEmbeddedArchive()
+{
+    const auto asset = lqsurface::findEmbeddedAsset (lqsurface::uiArchiveFileName);
+    return { asset.data, asset.size };
 }
 
-juce::String mimeFor(const juce::String& name) {
-    const auto ext = name.fromLastOccurrenceOf(".", false, false).toLowerCase();
-    if (ext == "html") return "text/html";
-    if (ext == "js") return "text/javascript";
-    if (ext == "css") return "text/css";
-    if (ext == "svg") return "image/svg+xml";
-    if (ext == "json" || ext == "map") return "application/json";
-    if (ext == "png") return "image/png";
-    if (ext == "woff2") return "font/woff2";
-    return "application/octet-stream";
-}
-}
-
-SurfaceExampleEditor::SurfaceExampleEditor(SurfaceExampleProcessor& p)
-    : AudioProcessorEditor(&p), processor(p),
-      browser(juce::WebBrowserComponent::Options{}
 #if JUCE_WINDOWS
-          .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
-#endif
-          .withNativeIntegrationEnabled()
-          .withNativeFunction("surfaceBeginGesture", [this](const auto& args, auto complete) {
-              const auto* param = args.size() >= 1 ? parameterFor(args[0].toString()) : nullptr;
-              if (param != nullptr) param->beginChangeGesture();
-              complete(param != nullptr);
-          })
-          .withNativeFunction("surfaceSetParameter", [this](const auto& args, auto complete) {
-              auto* param = args.size() >= 2 ? parameterFor(args[0].toString()) : nullptr;
-              const auto v = args.size() >= 2 ? static_cast<double>(args[1]) : -1.0;
-              const bool valid = param != nullptr && std::isfinite(v) && v >= 0.0 && v <= 1.0;
-              if (valid) param->setValueNotifyingHost(static_cast<float>(v));
-              complete(valid);
-          })
-          .withNativeFunction("surfaceEndGesture", [this](const auto& args, auto complete) {
-              auto* param = args.size() >= 1 ? parameterFor(args[0].toString()) : nullptr;
-              if (param != nullptr) param->endChangeGesture();
-              complete(param != nullptr);
-          })
-          .withResourceProvider([](const juce::String& path) { return getResource(path); })) {
-    setSize(920, 820);
-    addAndMakeVisible(browser);
-    browser.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
-    startTimerHz(12); // UI-only polling, not on the real-time audio thread.
-}
+/** WebView2 refuses to start if it cannot write its user-data folder, and the default location
+    sits next to the host executable, which is often not writable. Use a per-user folder. */
+juce::File webView2UserDataFolder()
+{
+    for (auto base : { juce::File::getSpecialLocation (juce::File::windowsLocalAppData),
+                       juce::File::getSpecialLocation (juce::File::tempDirectory) })
+    {
+        const auto folder = base.getChildFile ("lowquo").getChildFile ("lq-surface-example").getChildFile ("WebView2");
 
-SurfaceExampleEditor::~SurfaceExampleEditor() { stopTimer(); }
-
-juce::RangedAudioParameter* SurfaceExampleEditor::parameterFor(const juce::String& id) const {
-    if (id != "surface_x" && id != "surface_y" && id != "surface_z") return nullptr;
-    return processor.parameters.getParameter(id);
-}
-
-std::optional<Resource> SurfaceExampleEditor::getResource(const juce::String& requestedPath) {
-    auto name = requestedPath.trimCharactersAtStart("/");
-    if (name.isEmpty()) name = "index.html";
-    // Refuse traversal even though the ZIP contains trusted packaged assets only.
-    if (name.contains("..") || name.containsChar('\\')) return std::nullopt;
-    auto& archive = uiArchive();
-    const auto* entry = archive.getEntry(name);
-    if (entry == nullptr) return std::nullopt;
-    std::unique_ptr<juce::InputStream> stream(archive.createStreamForEntry(*entry));
-    if (stream == nullptr || entry->uncompressedSize > 10 * 1024 * 1024) return std::nullopt;
-    std::vector<std::byte> bytes(static_cast<size_t>(entry->uncompressedSize));
-    const auto read = stream->read(bytes.data(), static_cast<int>(bytes.size()));
-    if (read != static_cast<int>(bytes.size())) return std::nullopt;
-    return Resource{std::move(bytes), mimeFor(name)};
-}
-
-void SurfaceExampleEditor::timerCallback() {
-    if (!browser.pageReady) return;
-    // Frontend expects x/y/z, not native IDs.
-    juce::DynamicObject::Ptr compact(new juce::DynamicObject());
-    for (const char* axis : { "x", "y", "z" }) {
-        const juce::String paramId = "surface_" + juce::String(axis);
-        if (const auto* p = parameterFor(paramId)) compact->setProperty(juce::Identifier(axis), p->getValue());
+        if (folder.createDirectory().wasOk())
+            return folder;
     }
-    browser.emitEventIfBrowserIsVisible("surfaceHostState", juce::var(compact.get()));
+
+    return {};
+}
+#endif
+} // namespace
+
+//==============================================================================
+class SurfaceExampleEditor::Browser final : public juce::WebBrowserComponent
+{
+public:
+    Browser (SurfaceExampleEditor& ownerIn, const Options& options)
+        : WebBrowserComponent (options), owner (ownerIn) {}
+
+    bool pageAboutToLoad (const juce::String& url) override       { return owner.handleNavigation (url); }
+    void pageFinishedLoading (const juce::String& url) override    { owner.handlePageLoaded (url); }
+    void newWindowAttemptingToLoad (const juce::String& url) override { owner.handleNewWindow (url); }
+
+private:
+    SurfaceExampleEditor& owner;
+};
+
+//==============================================================================
+SurfaceExampleEditor::SurfaceExampleEditor (SurfaceExampleProcessor& p)
+    : AudioProcessorEditor (&p),
+      archive (openEmbeddedArchive()),
+      bridge (lqsurface::SurfaceNativeBridge::findParameters (p.parameters))
+{
+    browser = std::make_unique<Browser> (*this, createBrowserOptions());
+    addAndMakeVisible (*browser);
+    setSize (920, 820);
+    browser->goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
+
+    // Message-thread change detection only; never runs on (or touches) the audio thread.
+    startTimerHz (30);
 }
 
-void SurfaceExampleEditor::resized() { browser.setBounds(getLocalBounds()); }
+SurfaceExampleEditor::~SurfaceExampleEditor()
+{
+    stopTimer();
+    // Close anything the page left open before the page disappears (editor close mid-drag).
+    bridge.endAllGestures();
+    browser.reset();
+}
+
+juce::WebBrowserComponent::Options SurfaceExampleEditor::createBrowserOptions()
+{
+    using Options = juce::WebBrowserComponent::Options;
+    using Args = juce::Array<juce::var>;
+    using Completion = juce::WebBrowserComponent::NativeFunctionCompletion;
+
+    return Options {}
+       #if JUCE_WINDOWS
+        .withBackend (Options::Backend::webview2)
+        .withWinWebView2Options (Options::WinWebView2 {}
+                                     .withUserDataFolder (webView2UserDataFolder())
+                                     .withStatusBarDisabled())
+       #endif
+        .withNativeIntegrationEnabled()
+        .withNativeFunction (lqsurface::native::beginGesture,
+                             [this] (const Args& args, Completion complete) { complete (bridge.beginGesture (args)); })
+        .withNativeFunction (lqsurface::native::setParameter,
+                             [this] (const Args& args, Completion complete) { complete (bridge.setParameter (args)); })
+        .withNativeFunction (lqsurface::native::endGesture,
+                             [this] (const Args& args, Completion complete) { complete (bridge.endGesture (args)); })
+        .withNativeFunction (lqsurface::native::getState,
+                             [this] (const Args& args, Completion complete) { complete (bridge.getState (args)); })
+        // No allowed origin: only pages served from the resource-provider root can use it.
+        .withResourceProvider ([this] (const juce::String& path) { return serveResource (path); });
+}
+
+std::optional<juce::WebBrowserComponent::Resource> SurfaceExampleEditor::serveResource (const juce::String& path) const
+{
+    if (archive.isValid())
+        return archive.getResource (path);
+
+    if (lqsurface::normaliseResourcePath (path) == juce::String ("index.html"))
+        return lqsurface::EmbeddedUiArchive::missingArchivePage();
+
+    return std::nullopt;
+}
+
+bool SurfaceExampleEditor::handleNavigation (const juce::String& url)
+{
+    switch (lqsurface::classifyNavigation (url, juce::WebBrowserComponent::getResourceProviderRoot()))
+    {
+        case lqsurface::NavigationDecision::allow:
+            // The current document (and any gesture its script had open) is about to go away.
+            bridge.endAllGestures();
+            pageReady = false;
+            return true;
+
+        case lqsurface::NavigationDecision::openExternally:
+            openInSystemBrowser (url);
+            return false;
+
+        case lqsurface::NavigationDecision::block:
+            break;
+    }
+
+    return false;
+}
+
+void SurfaceExampleEditor::handleNewWindow (const juce::String& url)
+{
+    // Never create a second WebView. External links go to the system browser instead.
+    if (lqsurface::classifyNavigation (url, juce::WebBrowserComponent::getResourceProviderRoot())
+            == lqsurface::NavigationDecision::openExternally)
+        openInSystemBrowser (url);
+}
+
+void SurfaceExampleEditor::handlePageLoaded (const juce::String& url)
+{
+    pageReady = url.startsWith (juce::WebBrowserComponent::getResourceProviderRoot());
+
+    if (pageReady)
+        bridge.invalidateSeenState();
+}
+
+void SurfaceExampleEditor::openInSystemBrowser (const juce::String& url)
+{
+    if (! linkThrottle.tryAcquire (juce::Time::getMillisecondCounter()))
+        return;
+
+    // Deferred so the WebView's navigation callback returns before another app is launched.
+    juce::MessageManager::callAsync ([target = juce::URL (url)] { target.launchInDefaultBrowser(); });
+}
+
+void SurfaceExampleEditor::timerCallback()
+{
+    if (! pageReady || browser == nullptr || ! browser->isVisible())
+        return;
+
+    if (const auto payload = bridge.takeHostStateChange())
+        browser->emitEventIfBrowserIsVisible (lqsurface::native::hostStateEvent, *payload);
+}
+
+void SurfaceExampleEditor::resized()
+{
+    if (browser != nullptr)
+        browser->setBounds (getLocalBounds());
+}
