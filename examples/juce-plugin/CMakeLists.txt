@@ -31,12 +31,19 @@ if(APPLE)
     list(APPEND LQ_SURFACE_FORMATS AU)
 endif()
 
+# FROZEN plug-in identity (maintainer decision, 2026-11-20). Hosts recognise a plug-in by these
+# values: changing any of them makes DAWs treat it as a different plug-in, and saved projects and
+# automation stop finding it. They are deliberately distinct from every commercial lowquo plug-in.
+# CI checks the built bundles against these exact values (.github/workflows/juce.yml).
+#   Manufacturer code  Lqoo   (first letter upper case, rest lower case: AU + GarageBand rule)
+#   Plug-in code       Lqsf   (exactly one upper-case letter, first: AU + GarageBand rule)
+#   Bundle ID          io.lowquo.surface.example
 juce_add_plugin(LqSurfaceExample
     COMPANY_NAME lowquo
     PRODUCT_NAME "lq-surface example"
     BUNDLE_ID io.lowquo.surface.example
-    PLUGIN_MANUFACTURER_CODE LqXX         # 4 chars, at least one upper-case letter
-    PLUGIN_CODE Lqsf                      # 4 chars, exactly one upper-case letter (AU requirement)
+    PLUGIN_MANUFACTURER_CODE Lqoo
+    PLUGIN_CODE Lqsf
     FORMATS ${LQ_SURFACE_FORMATS}
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE

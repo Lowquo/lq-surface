@@ -24,6 +24,9 @@ const keep = args.has('--keep');
 const ROOT_FILES = new Set(['package.json', 'README.md', 'LICENSE']);
 const REQUIRED = ['package.json', 'README.md', 'LICENSE', 'dist/index.js', 'dist/index.d.ts'];
 const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall'];
+// JUCE-licensed packages (e.g. @juce-framework/webview) and markers of copied JUCE sources.
+const JUCE_PACKAGE = /^(@juce-framework\/|juce($|[-_.]))/i;
+const JUCE_SOURCE_MARKERS = ['This file is part of the JUCE framework', 'Raw Material Software Limited'];
 // Browser packages are only required to type-check; every other package must
 // also import under plain Node ESM.
 const BROWSER_ONLY = new Set(['@lowquo/surface-controls']);
@@ -287,6 +290,18 @@ function checkContents(pkg) {
         fail(`${file} exposes types from "${name}", which has no bundled types; declare ${typesPackageFor(name)} (an optional peer is enough)`);
       }
     }
+  }
+
+  // Licence isolation (maintainer decision): the MIT packages contain no JUCE code and depend on
+  // nothing JUCE-licensed. JUCE (AGPLv3 or the JUCE licence) stays in examples/. See docs/licensing.md.
+  const shippedDeps = { ...manifest.dependencies, ...manifest.peerDependencies, ...manifest.optionalDependencies };
+  for (const name of Object.keys(shippedDeps)) {
+    if (JUCE_PACKAGE.test(name)) fail(`depends on "${name}": JUCE-licensed code must stay in the examples`);
+  }
+  for (const file of files) {
+    const text = readFileSync(path.join(pkg.dir, file), 'utf8');
+    const marker = JUCE_SOURCE_MARKERS.find((m) => text.includes(m));
+    if (marker) fail(`${file} contains JUCE source ("${marker}"); JUCE code must stay in the examples`);
   }
 
   const summary = `${info.filename}: ${info.entryCount} files, ${info.size} B packed, ${info.unpackedSize} B unpacked`;

@@ -17,6 +17,20 @@ env:
   JUCE_COMMIT: 3fb5cbc0340758596dac39f7c8de47d562b4896e
   # Version suggested by JUCE 9.0.4's extras/Build/CMake/FindWebView2.cmake.
   WEBVIEW2_VERSION: '1.0.3485.44'
+  # FROZEN plug-in identity (see examples/juce-plugin/CMakeLists.txt). Hosts recognise the plug-in
+  # by these values; the bundle checks below fail if a build ever carries different ones.
+  EXPECT_BUNDLE_ID: io.lowquo.surface.example
+  EXPECT_AU_TYPE: aufx
+  EXPECT_AU_SUBTYPE: Lqsf
+  EXPECT_AU_MANUFACTURER: Lqoo
+  EXPECT_VST3_PROCESSOR_CID: ABCDEF019182FAEB4C716F6F4C717366
+  EXPECT_VST3_CONTROLLER_CID: ABCDEF011234ABCD4C716F6F4C717366
+  # pluginval (Tracktion, GPLv3 tool; used only to test, never shipped). Pinned release and the
+  # SHA-256 of each zip as verified by the maintainer workflow (macOS build: notarized Developer ID,
+  # Tracktion Software Corp YLB5W3GE5T).
+  PLUGINVAL_VERSION: v1.0.4
+  PLUGINVAL_SHA256_MACOS: 3c4c533bda0c5059eea3ddaea752d757ee2025041f0f47e6bcb0e87f6082b29f
+  PLUGINVAL_SHA256_WINDOWS: c08e61ce3b96db41636f8ec7e76f4c7e2c13ebdac7fa1b5a1f52b4f32ec715ab
 jobs:
   plugin:
     name: ${{ matrix.name }}
@@ -96,9 +110,64 @@ jobs:
             lipo -info "$bundle/Contents/MacOS/lq-surface example"
           done
           test -f "VST3/lq-surface example.vst3/Contents/Resources/moduleinfo.json"
+      - name: Verify frozen plug-in identity (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd "build/juce-ci/LqSurfaceExample_artefacts/Release"
+          pb() { /usr/libexec/PlistBuddy -c "Print :$1" "$2/Contents/Info.plist"; }
+          check() { if [ "$2" != "$3" ]; then echo "::error::$1 is '$2', expected '$3'"; exit 1; fi; echo "ok  $1 = $2"; }
+          AU="AU/lq-surface example.component"; VST3="VST3/lq-surface example.vst3"
+          check "AU bundle id"     "$(pb CFBundleIdentifier "$AU")"                "$EXPECT_BUNDLE_ID"
+          check "VST3 bundle id"   "$(pb CFBundleIdentifier "$VST3")"              "$EXPECT_BUNDLE_ID"
+          check "AU type"          "$(pb AudioComponents:0:type "$AU")"            "$EXPECT_AU_TYPE"
+          check "AU subtype"       "$(pb AudioComponents:0:subtype "$AU")"         "$EXPECT_AU_SUBTYPE"
+          check "AU manufacturer"  "$(pb AudioComponents:0:manufacturer "$AU")"    "$EXPECT_AU_MANUFACTURER"
+          info="$VST3/Contents/Resources/moduleinfo.json"
+          grep -q "\"CID\": \"$EXPECT_VST3_PROCESSOR_CID\"" "$info"  && echo "ok  VST3 processor CID"  || { echo "::error::VST3 processor CID changed"; exit 1; }
+          grep -q "\"CID\": \"$EXPECT_VST3_CONTROLLER_CID\"" "$info" && echo "ok  VST3 controller CID" || { echo "::error::VST3 controller CID changed"; exit 1; }
       - name: Inspect bundle (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
           ls -R "build/juce-ci/LqSurfaceExample_artefacts/Release/VST3"
           test -f "build/juce-ci/LqSurfaceExample_artefacts/Release/VST3/lq-surface example.vst3/Contents/x86_64-win/lq-surface example.vst3"
+      - name: Verify frozen plug-in identity (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          info="build/juce-ci/LqSurfaceExample_artefacts/Release/VST3/lq-surface example.vst3/Contents/Resources/moduleinfo.json"
+          grep -q "\"CID\": \"$EXPECT_VST3_PROCESSOR_CID\"" "$info"  && echo "ok  VST3 processor CID"  || { echo "::error::VST3 processor CID changed"; exit 1; }
+          grep -q "\"CID\": \"$EXPECT_VST3_CONTROLLER_CID\"" "$info" && echo "ok  VST3 controller CID" || { echo "::error::VST3 controller CID changed"; exit 1; }
+      # Validators. These run only on the disposable CI runner; nothing is uploaded or published,
+      # and compiled example plug-ins are never distributed (docs/licensing.md).
+      - name: Download pluginval (pinned, checksum-verified)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then f=pluginval_macOS.zip; sum="$PLUGINVAL_SHA256_MACOS"; else f=pluginval_Windows.zip; sum="$PLUGINVAL_SHA256_WINDOWS"; fi
+          curl -fsSL -o "$RUNNER_TEMP/$f" "https://github.com/Tracktion/pluginval/releases/download/$PLUGINVAL_VERSION/$f"
+          if command -v sha256sum >/dev/null; then actual=$(sha256sum "$RUNNER_TEMP/$f" | cut -d' ' -f1); else actual=$(shasum -a 256 "$RUNNER_TEMP/$f" | cut -d' ' -f1); fi
+          if [ "$actual" != "$sum" ]; then echo "::error::pluginval checksum mismatch: $actual"; exit 1; fi
+          unzip -q -o "$RUNNER_TEMP/$f" -d "$RUNNER_TEMP/pluginval"
+          if [ "$RUNNER_OS" = macOS ]; then echo "PLUGINVAL=$RUNNER_TEMP/pluginval/pluginval.app/Contents/MacOS/pluginval" >> "$GITHUB_ENV"; else echo "PLUGINVAL=$RUNNER_TEMP/pluginval/pluginval.exe" >> "$GITHUB_ENV"; fi
+      - name: pluginval VST3 (strictness 10, GUI tests on)
+        shell: bash
+        run: >
+          "$PLUGINVAL" --strictness-level 10 --timeout-ms 300000
+          --validate "build/juce-ci/LqSurfaceExample_artefacts/Release/VST3/lq-surface example.vst3"
+      - name: Install AU on the runner (macOS, disposable)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          ditto "build/juce-ci/LqSurfaceExample_artefacts/Release/AU/lq-surface example.component" ~/Library/Audio/Plug-Ins/Components/"lq-surface example.component"
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+      - name: auval -strict (macOS)
+        if: runner.os == 'macOS'
+        run: auval -strict -v "$EXPECT_AU_TYPE" "$EXPECT_AU_SUBTYPE" "$EXPECT_AU_MANUFACTURER"
+      - name: pluginval AU (strictness 10, macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: >
+          "$PLUGINVAL" --strictness-level 10 --timeout-ms 300000
+          --validate "$HOME/Library/Audio/Plug-Ins/Components/lq-surface example.component"
