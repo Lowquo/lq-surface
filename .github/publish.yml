@@ -1,0 +1,165 @@
+name: npm release (verify or stage)
+
+# Deliberately manual. This workflow NEVER calls `npm publish` or approves a stage.
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: npm package to verify or stage
+        type: choice
+        required: true
+        options:
+          - surface
+          - surface-controls
+          - surface-juce
+      operation:
+        description: Verify only, or stage for a maintainer to approve later on npm
+        type: choice
+        required: true
+        default: verify
+        options:
+          - verify
+          - stage
+      confirmation:
+        description: Enter STAGE to enable staging (leave blank to verify)
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release-${{ inputs.package }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Validate source, tests and package
+    runs-on: ubuntu-latest
+    outputs:
+      package_dir: ${{ steps.package.outputs.dir }}
+      package_name: ${{ steps.package.outputs.name }}
+    steps:
+      - name: Check manual release request
+        shell: bash
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ "$OPERATION" == 'stage' ]]; then
+            if [[ "$CONFIRMATION" != 'STAGE' || "$GITHUB_REF" != 'refs/heads/main' || "$GITHUB_REPOSITORY" != 'Lowquo/lq-surface' ]]; then
+              echo 'Staging requires confirmation STAGE on Lowquo/lq-surface main.' >&2
+              exit 1
+            fi
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Use an npm CLI with staged publishing
+        run: |
+          npm install --global npm@11
+          node --version
+          npm --version
+          node -e 'const v=process.versions.node.split(".").map(Number); if (v[0] < 22 || (v[0] === 22 && v[1] < 14)) process.exit(1)'
+          npm stage --help >/dev/null
+
+      - name: Map selected package
+        id: package
+        shell: bash
+        env:
+          SELECTED_PACKAGE: ${{ inputs.package }}
+        run: |
+          case "$SELECTED_PACKAGE" in
+            surface) dir='packages/core' ;;
+            surface-controls) dir='packages/controls' ;;
+            surface-juce) dir='packages/juce' ;;
+            *) echo 'Unsupported package' >&2; exit 1 ;;
+          esac
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "name=@lowquo/$SELECTED_PACKAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Reproducible install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Verify package metadata and files
+        shell: bash
+        env:
+          PACKAGE_DIR: ${{ steps.package.outputs.dir }}
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const p = JSON.parse(readFileSync(`${process.env.PACKAGE_DIR}/package.json`, 'utf8'));
+          if (p.name !== process.env.PACKAGE_NAME) throw new Error(`Wrong package name: ${p.name}`);
+          if (p.private === true) throw new Error('Selected package is private');
+          if (!p.version || !/^\d+\.\d+\.\d+/.test(p.version)) throw new Error('Missing semver version');
+          if (p.license !== 'MIT') throw new Error('Verify the expected MIT license before staging');
+          const origin = typeof p.repository === 'string' ? p.repository : p.repository?.url;
+          if (process.env.OPERATION === 'stage' &&
+              !['https://github.com/Lowquo/lq-surface', 'https://github.com/Lowquo/lq-surface.git',
+                'git+https://github.com/Lowquo/lq-surface.git'].includes(origin)) {
+            throw new Error(`Set repository.url in ${process.env.PACKAGE_DIR}/package.json to the Lowquo GitHub repository before OIDC staging`);
+          }
+          console.log(`Validated ${p.name}@${p.version}`);
+          NODE
+          npm pack --dry-run --workspace "$PACKAGE_NAME"
+
+  stage:
+    name: Stage for explicit approval on npmjs.com
+    needs: verify
+    if: ${{ inputs.operation == 'stage' && inputs.confirmation == 'STAGE' && github.ref == 'refs/heads/main' && github.repository == 'Lowquo/lq-surface' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # OIDC: use only with npm Trusted Publisher stage-only permissions
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Enable npm staged publishing
+        run: npm install --global npm@11
+
+      - name: Rebuild from committed lockfile
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+          npm test
+
+      - name: Stage package — never publish directly
+        shell: bash
+        env:
+          PACKAGE_DIR: ${{ needs.verify.outputs.package_dir }}
+          PACKAGE_NAME: ${{ needs.verify.outputs.package_name }}
+        run: |
+          echo "Staging $PACKAGE_NAME from $PACKAGE_DIR"
+          cd "$PACKAGE_DIR"
+          npm stage publish --access public
+          echo "### Staged $PACKAGE_NAME" >> "$GITHUB_STEP_SUMMARY"
+          echo 'This version is NOT published for install until the npm organisation owner approves it with 2FA.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Review it under npmjs.com → Staged Packages. No approval occurs in this workflow.' >> "$GITHUB_STEP_SUMMARY"
